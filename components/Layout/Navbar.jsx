@@ -16,10 +16,7 @@ const Navbar = () => {
   const router = useRouter()
    
   const handleLoginAndSignupRedirect = () => {
-
-    console.log('button clicked');
     router.push('/auth-page');
-    
   }
   
 
