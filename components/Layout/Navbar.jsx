@@ -1,27 +1,45 @@
-"use client"; 
+"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { BedDouble, Menu, X } from "lucide-react";
 import Button from "../ui/Button";
 import { useRouter } from "next/navigation";
+import { useLogoutMutation } from "@/features/auth/useAuthMutations";
+import { useAuthUser } from "@/features/auth/useAuthUser";
+import toast from "react-hot-toast";
 
 const Navbar = () => {
-  useEffect(() => {
-  console.log("✅ Navbar hydrated (client JS running)");
-}, []);
 
   const [isOpen, setIsOpen] = useState(false);
   const toggleMenu = () => setIsOpen(!isOpen);
   const router = useRouter()
-   
+
   const handleLoginAndSignupRedirect = () => {
     router.push('/auth-page');
   }
+
+  const { data: user, isLoading } = useAuthUser();
+  const isLoggedIn = Boolean(user);
+  console.log(user);
   
+  const logoutMutation = useLogoutMutation();
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Logged out successfully.");
+        setIsOpen(false);
+        router.push("/auth-page");
+      },
+      onError: (err) => {
+        toast.error("Error logging out. Please try again.");
+      }
+    });
+  };
 
   return (
-    <header  className="sticky top-0 z-[9999] w-full border-b border-gray-200 bg-white/70 backdrop-blur-md">
+    <header className="sticky top-0 z-[9999] w-full border-b border-gray-200 bg-white/70 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
@@ -36,14 +54,23 @@ const Navbar = () => {
           <Link href="/about-us" className="text-sm font-medium text-secondaryColor hover:text-primaryColor">About Us</Link>
 
           <div className="flex items-center gap-2 ml-4">
-            <Button
-              title="Owner Login"
-              bg="bg-white/80"
-              textColor="text-primaryColor border-[1px] border-primaryColor"
-              className="relative z-[9999] ..."
-              onClick={handleLoginAndSignupRedirect}
-            />
-            <Button title="Admin Login" onClick={handleLoginAndSignupRedirect} />
+            {!isLoggedIn ? (
+              <>
+                <Button
+                  title="Owner Login"
+                  bg="bg-white/80"
+                  textColor="text-primaryColor border-[1px] border-primaryColor"
+                  onClick={handleLoginAndSignupRedirect}
+                />
+                <Button title="Admin Login" onClick={handleLoginAndSignupRedirect} />
+              </>
+            ) : (
+              <Button
+                title={logoutMutation.isPending ? "Logging out..." : "Logout"}
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+              />
+            )}
           </div>
         </nav>
 
@@ -64,16 +91,40 @@ const Navbar = () => {
             <Link href="/" onClick={() => setIsOpen(false)} className="text-base font-medium">Home</Link>
             <Link href="/hotels" onClick={() => setIsOpen(false)} className="text-base font-medium">Hotels</Link>
             <Link href="/about-us" onClick={() => setIsOpen(false)} className="text-base font-medium">About Us</Link>
-            
+
             <hr className="my-2" />
-            
+
             <div className="flex flex-col gap-2">
-              <button  onClick={handleLoginAndSignupRedirect}  className="w-full py-2 text-sm font-medium border rounded-md bg-white/80 backdrop-blur-sm">
-                Owner Login
-              </button>
-              <button  onClick={handleLoginAndSignupRedirect}  className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md">
-                Admin Login
-              </button>
+              {!isLoggedIn ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      handleLoginAndSignupRedirect();
+                    }}
+                    className="w-full py-2 text-sm font-medium border rounded-md bg-white/80 backdrop-blur-sm"
+                  >
+                    Owner Login
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      handleLoginAndSignupRedirect();
+                    }}
+                    className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md"
+                  >
+                    Admin Login
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md disabled:opacity-50"
+                >
+                  {logoutMutation.isPending ? "Logging out..." : "Logout"}
+                </button>
+              )}
             </div>
           </nav>
         </div>

@@ -48,6 +48,14 @@ export default function InputField({
     setLocalError(computedError);
   }, [computedError]);
 
+  useEffect(() => {
+    if (!value) {
+      setTouched(false);
+      setLocalError("");
+    }
+  }, [value]);
+
+
   const baseInput =
     "h-10 w-full rounded-md border bg-white px-3 py-2 text-sm placeholder:text-gray-400 " +
     "focus:outline-none focus:ring-2 focus:ring-offset-0";
@@ -78,9 +86,8 @@ export default function InputField({
         required={required}
         onChange={(e) => onChange?.(e)}
         onBlur={() => setTouched(true)}
-        className={`${baseInput} ${
-          shouldShowError ? errorBorder : normalBorder
-        } ${inputClassName}`}
+        className={`${baseInput} ${shouldShowError ? errorBorder : normalBorder
+          } ${inputClassName}`}
         aria-invalid={shouldShowError ? "true" : "false"}
         aria-describedby={shouldShowError ? `${id}-error` : undefined}
         {...props}

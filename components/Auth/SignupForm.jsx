@@ -53,7 +53,7 @@ function CardContent({ className = "", ...props }) {
   return <div className={`p-6 pt-3 ${className}`} {...props} />;
 }
 
-export default function SignupForm({ signupState, setSignupState, onSubmit }) {
+export default function SignupForm({ signupState, setSignupState, onSubmit, isSubmitting = false, apiError = null }) {
   return (
     <Card>
       <CardHeader>
@@ -98,11 +98,11 @@ export default function SignupForm({ signupState, setSignupState, onSubmit }) {
 
           {/* Guest/Owner ONLY */}
           <div className="space-y-2">
-            <Label htmlFor="signup-userType">User Type</Label>
+            <Label htmlFor="signup-role">User Role</Label>
             <Select
-              id="signup-userType"
-              value={signupState.userType}
-              onChange={(e) => setSignupState((p) => ({ ...p, userType: e.target.value }))}
+              id="signup-role"
+              value={signupState.role}
+              onChange={(e) => setSignupState((p) => ({ ...p, role: e.target.value }))}
             >
               <option value="guest">Guest</option>
               <option value="owner">Owner</option>
@@ -119,7 +119,7 @@ export default function SignupForm({ signupState, setSignupState, onSubmit }) {
           />
 
           <Button type="submit" className="w-full">
-            Create Account
+            {isSubmitting ? "Creating..." : "Create Account"}
           </Button>
         </form>
       </CardContent>

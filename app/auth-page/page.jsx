@@ -6,6 +6,8 @@ import { BedDouble } from "lucide-react";
 
 import LoginForm from "@/components/Auth/LoginForm";
 import SignupForm from "@/components/Auth/SignupForm";
+import { useLoginMutation, useSignupMutation } from "@/features/auth/useAuthMutations";
+import toast from "react-hot-toast";
 
 /* ---------------------------
    Layout
@@ -19,9 +21,9 @@ function Layout({ children }) {
 --------------------------- */
 const TabsCtx = createContext(null);
 
-function Tabs({ defaultValue, className = "", children }) {
-  const [value, setValue] = useState(defaultValue);
-  const ctx = useMemo(() => ({ value, setValue }), [value]);
+function Tabs({ value, onValueChange, className = "", children }) {
+  const ctx = useMemo(() => ({ value, setValue: onValueChange }), [value, onValueChange]);
+
   return (
     <TabsCtx.Provider value={ctx}>
       <div className={className}>{children}</div>
@@ -41,9 +43,8 @@ function TabsTrigger({ value, className = "", children }) {
     <button
       type="button"
       onClick={() => ctx?.setValue(value)}
-      className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-        active ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
-      } ${className}`}
+      className={`rounded-md px-3 py-2 text-sm font-medium transition ${active ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+        } ${className}`}
     >
       {children}
     </button>
@@ -55,14 +56,17 @@ function TabsContent({ value, className = "", children }) {
   if (ctx?.value !== value) return null;
   return <div className={className}>{children}</div>;
 }
-
+// Helper to extract API error message
+function getApiErrorMessage(err) {
+  return err?.response?.data?.message || err?.message || null;
+}
 /* ---------------------------
    Page
 --------------------------- */
 
 export default function AuthPage() {
   const router = useRouter();
-
+  const [activeTab, setActiveTab] = useState("login");
   const [loginState, setLoginState] = useState({
     role: "guest", // "guest" | "owner" | "admin"
     email: "",
@@ -73,18 +77,55 @@ export default function AuthPage() {
     firstName: "",
     lastName: "",
     email: "",
-    userType: "guest", // "guest" | "owner"
+    role: "guest", // "guest" | "owner"
     password: "",
   });
+  console.log(signupState);
+
+  // React Query mutations
+  const loginMutation = useLoginMutation()
+  const signupMutation = useSignupMutation()
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    router.push("/");
+
+    loginMutation.mutate(loginState, {
+      onSuccess: () => {
+        toast.success("Welcome back!");
+        setLoginState({
+          role: "guest",
+          email: "",
+          password: "",
+        });
+        router.push("/");
+      },
+      onError: (err) => {
+        // Extracts the message using your helper function or defaults to a generic string
+        const message = getApiErrorMessage(err) || "Invalid email or password";
+        toast.error(message);
+      },
+    });
   };
 
   const handleSignupSubmit = (e) => {
     e.preventDefault();
-    router.push("/");
+    signupMutation.mutate(signupState, {
+      onSuccess: () => {
+        toast.success("Account created successfully! Welcome to Haven.");
+        setSignupState({
+          firstName: "",
+          lastName: "",
+          email: "",
+          role: "guest",
+          password: "",
+        });
+        setActiveTab("login");
+      },
+      onError: (err) => {
+        const message = getApiErrorMessage(err) || "Signup failed. Please try again.";
+        toast.error(message);
+      },
+    });
   };
 
   return (
@@ -105,7 +146,9 @@ export default function AuthPage() {
               </p>
             </div>
 
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -116,6 +159,8 @@ export default function AuthPage() {
                   loginState={loginState}
                   setLoginState={setLoginState}
                   onSubmit={handleLoginSubmit}
+                  isSubmitting={loginMutation.isPending}
+                  apiError={getApiErrorMessage(loginMutation.error)}
                 />
               </TabsContent>
 
@@ -124,6 +169,8 @@ export default function AuthPage() {
                   signupState={signupState}
                   setSignupState={setSignupState}
                   onSubmit={handleSignupSubmit}
+                  isSubmitting={signupMutation.isPending}
+                  apiError={getApiErrorMessage(signupMutation.error)}
                 />
               </TabsContent>
             </Tabs>
