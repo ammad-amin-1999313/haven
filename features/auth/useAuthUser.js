@@ -1,17 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { meApi } from "./authApi";
+import { bootstrapAuth } from "@/lib/apiClient";
+
+
 
 export function useAuthUser() {
   return useQuery({
-    queryKey: ["me"],
-    queryFn: meApi,
+    queryKey: ["auth"],
+    queryFn: bootstrapAuth,
+    staleTime: Infinity,
     retry: false,
-    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    select: (data) => data?.user ?? null,
   });
 }
 
 export function useSignupData() {
   const qc = useQueryClient();
-  // We use getQueryData because we just want the value currently in cache
   return qc.getQueryData(["signup-data"]);
 }

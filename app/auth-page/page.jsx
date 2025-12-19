@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, createContext, useContext } from "react";
+import React, { useMemo, useState, createContext, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BedDouble } from "lucide-react";
 
@@ -8,6 +8,7 @@ import LoginForm from "@/components/Auth/LoginForm";
 import SignupForm from "@/components/Auth/SignupForm";
 import { useLoginMutation, useSignupMutation } from "@/features/auth/useAuthMutations";
 import toast from "react-hot-toast";
+import { useSignupData } from "@/features/auth/useAuthUser";
 
 /* ---------------------------
    Layout
@@ -80,7 +81,6 @@ export default function AuthPage() {
     role: "guest", // "guest" | "owner"
     password: "",
   });
-  console.log(signupState);
 
   // React Query mutations
   const loginMutation = useLoginMutation()
@@ -90,17 +90,12 @@ export default function AuthPage() {
     e.preventDefault();
 
     loginMutation.mutate(loginState, {
+
       onSuccess: () => {
         toast.success("Welcome back!");
-        setLoginState({
-          role: "guest",
-          email: "",
-          password: "",
-        });
         router.push("/");
       },
       onError: (err) => {
-        // Extracts the message using your helper function or defaults to a generic string
         const message = getApiErrorMessage(err) || "Invalid email or password";
         toast.error(message);
       },
@@ -127,7 +122,16 @@ export default function AuthPage() {
       },
     });
   };
-
+  // empty login state
+  useEffect(() => {
+    return () => {
+      setLoginState({
+        role: "guest",
+        email: "",
+        password: "",
+      });
+    };
+  }, []);
   return (
     <Layout>
       <div className="min-h-screen grid lg:grid-cols-2">

@@ -1,24 +1,25 @@
-import { api, tokenStore } from "@/lib/apiClient";
+import { api, authSession, tokenStore } from "@/lib/apiClient";
 
 export async function signup(payload) {
-    const res = await api.post("/auth/sign-up",payload)
-    tokenStore.set(res.data.accessToken)
-    return res.data
+  const res = await api.post("/auth/sign-up", payload)
+  tokenStore.set(res.data.accessToken)
+  return res.data
 }
 
 export async function login(payload) {
-    const res = await api.post("/auth/login",payload)
-    tokenStore.set(res.data.accessToken)
-    return res.data 
-}
-
-export async function meApi() {
-  const res = await api.get("/auth/me"); // you need backend route for this
-  return res.data; // should be user object
+  const res = await api.post("/auth/login", payload)
+  tokenStore.set(res.data.accessToken)
+  authSession.onLogin();
+  return res.data
 }
 
 export async function logout() {
-    const res = await api.post("/auth/logout")
-    tokenStore.clear()
-    return res.data
+  authSession.beginLogout();     // stop refresh temporarily
+  tokenStore.clear();            // clear access token immediately
+  try {
+    const res = await api.post("/auth/logout");
+    return res.data;
+  } finally {
+    authSession.endLogout();     // ✅ allow refresh again
+  }
 }
