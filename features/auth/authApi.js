@@ -9,7 +9,7 @@ export async function signup(payload) {
 export async function login(payload) {
   const res = await api.post("/auth/login", payload)
   tokenStore.set(res.data.accessToken)
-  authSession.onLogin();
+  authSession.onLogin?.();
   return res.data
 }
 
@@ -20,6 +20,11 @@ export async function logout() {
     const res = await api.post("/auth/logout");
     return res.data;
   } finally {
-    authSession.endLogout();     // ✅ allow refresh again
+    setTimeout(() => authSession.endLogout(), 1000);
   }
+}
+
+export async function UpdateProfile({ id, payload }) {
+  const res = await api.patch(`/auth/update/${id}`, payload);
+  return res.data;
 }

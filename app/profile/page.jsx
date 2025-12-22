@@ -2,70 +2,108 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Mail, Phone, Calendar, Building, Edit3, LogOut } from "lucide-react";
+import { useRouter } from 'next/navigation';
+import { Mail, Phone, Calendar, Building, Edit3 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { mockOwnerHotels, mockUser, mockUserBookings } from '@/lib/data';
-
-// mocks for now (later replace with your actual data)
-
+import Button from '@/components/ui/Button';
+import { useLogoutMutation } from '@/features/auth/useAuthMutations';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const userFromRedux = useSelector((state) => state.user.user);
-  
+
   // Choose data based on role
   const isOwner = userFromRedux?.role === "owner";
   const user = isOwner ? mockOwnerHotels : mockUser;
+  const logoutMutation = useLogoutMutation();
+  // ✅ Redirect Logic
+  const handleEditRedirect = () => {
+    const userId = userFromRedux?.id || 'default'; // Ensure you have an ID
+
+    if (userFromRedux?.role === "owner") {
+      router.push(`/owner-edit/${userId}`);
+    } else {
+      router.push(`/guest-edit/${userId}`);
+    }
+  };
+  const handleLogout = () => {
+    // close UI immediately (before mutation causes rerenders)
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        router.replace("/auth-page"); // replace is more stable than push for auth transitions
+        toast.success("Logged out successfully.");
+      },
+      onError: () => {
+        toast.error("Logout failed.");
+      },
+    });
+  };
+  // formated Date
+  const formattedDate = userFromRedux?.updatedAt
+    ? new Date(userFromRedux.updatedAt).toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    })
+    : "";
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
+      <div className="container mx-auto max-w-7xl">
         <div className="grid md:grid-cols-12 gap-8">
-          
+
           {/* ───────────────── LEFT SIDEBAR ───────────────── */}
-          <div className="md:col-span-4 lg:col-span-3">
+          <div className="md:col-span-4 lg:col-span-4">
             <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm text-center">
               {/* Avatar Circle */}
-              <div className="w-28 h-28 rounded-full bg-[#D1D9D7] flex items-center justify-center text-[#2D5A4C] text-3xl font-bold mx-auto mb-6 shadow-inner">
-                {user.avatar || user.name?.charAt(0)}
+              <div className="w-28 h-28 rounded-full bg-[#D1D9D7] flex items-center justify-center text-[#2D5A4C] text-3xl font-bold mx-auto mb-6 shadow-inner capitalize">
+                {userFromRedux?.firstName?.charAt(0)}
               </div>
-              
-              <h1 className="font-serif text-2xl font-bold text-[#1A2B2B] mb-1">
-                {user.name}
+
+              <h1 className="font-serif text-2xl font-bold text-[#1A2B2B] mb-1 capitalize">
+                {userFromRedux?.firstName + " " + userFromRedux?.lastName}
               </h1>
               <p className="text-gray-400 text-sm font-medium mb-8">
                 {isOwner ? "Hotel Owner" : "Guest Member"}
               </p>
 
               <div className="space-y-3">
-                <button className="w-full flex items-center justify-center gap-2 border border-gray-200 py-2.5 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all">
-                  <Edit3 size={16} />
-                  Edit Profile
-                </button>
-                <button className="w-full flex items-center justify-center gap-2 bg-[#FF4D4D] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-[#e64545] transition-all shadow-md shadow-red-100">
-                  Logout
-                </button>
+                <Button
+                  title="Edit Profile"
+                  variant="outline"
+                  fullWidth
+                  className="py-2.5 text-sm"
+                  pre={<Edit3 size={16} />}
+                  onClick={handleEditRedirect} // ✅ Logic Trigger
+                />
+
+                <Button
+                  title="Logout"
+                  variant="danger"
+                  fullWidth
+                  className="py-2.5 text-sm shadow-md shadow-red-100"
+                  onClick={handleLogout}
+                />
               </div>
             </div>
           </div>
 
           {/* ───────────────── RIGHT CONTENT ───────────────── */}
-          <div className="md:col-span-8 lg:col-span-9 space-y-6">
-            
+          <div className="md:col-span-8 lg:col-span-8 space-y-6">
             {/* Account Details Card */}
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-8 py-5 border-b border-gray-50 bg-white">
                 <h2 className="font-bold text-[#1A2B2B]">Account Details</h2>
               </div>
               <div className="p-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                <DetailItem icon={<Mail />} label="Email" value={user.email} />
-                <DetailItem icon={<Phone />} label="Phone" value={user.phone} />
-                <DetailItem icon={<Calendar />} label="Member Since" value={user.joinedDate} />
+                <DetailItem icon={<Mail />} label="Email" value={userFromRedux?.email} />
+                <DetailItem icon={<Phone />} label="Phone" value={userFromRedux?.phone || "N/A"} />
+                <DetailItem icon={<Calendar />} label="Member Since" value={formattedDate || userFromRedux?.joinedDate || "N/A"} />
               </div>
             </div>
 
             {/* Role Specific Section */}
             {isOwner ? (
-              /* Business Summary for Owners */
               <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-8 py-5 border-b border-gray-50 bg-white">
                   <h2 className="font-bold text-[#1A2B2B]">Business Summary</h2>
@@ -73,7 +111,7 @@ export default function ProfilePage() {
                 <div className="p-8 grid sm:grid-cols-2 gap-6">
                   <div className="bg-[#F4F7F6] p-6 rounded-xl flex items-center gap-5">
                     <div className="bg-white p-3 rounded-lg text-[#2D5A4C] shadow-sm">
-                       <Building size={24} />
+                      <Building size={24} />
                     </div>
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Properties</p>
@@ -87,7 +125,6 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              /* Recent Bookings for Guests */
               <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-8 py-5 border-b border-gray-50 bg-white">
                   <h2 className="font-bold text-[#1A2B2B]">Recent Bookings</h2>
@@ -107,7 +144,7 @@ export default function ProfilePage() {
   );
 }
 
-// Sub-component for Account Details items
+// Sub-components remain the same...
 function DetailItem({ icon, label, value }) {
   return (
     <div className="flex items-start gap-4">
@@ -120,7 +157,6 @@ function DetailItem({ icon, label, value }) {
   );
 }
 
-// Sub-component for the simplified booking list in profile view
 function SmallBookingCard({ booking }) {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-5 p-4 border border-gray-50 rounded-xl hover:bg-gray-50 transition-colors">

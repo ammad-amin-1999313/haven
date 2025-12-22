@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { MapPin } from "lucide-react";
+import Button from "@/components/ui/Button"; // ✅ common button
 
 const BookingCardGuest = ({ booking }) => {
   // Manual date formatter to match the image style (DD/MM/YYYY)
@@ -34,7 +35,7 @@ const BookingCardGuest = ({ booking }) => {
               {booking.location}
             </p>
 
-            {/* Dates Grid - Spaced out like in your image */}
+            {/* Dates */}
             <div className="grid grid-cols-2 gap-12 mt-6">
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400 font-medium">Check-in</span>
@@ -50,7 +51,7 @@ const BookingCardGuest = ({ booking }) => {
               </div>
             </div>
 
-            {/* Status Badge */}
+            {/* Status */}
             <div className="mt-4">
               <span className="inline-block px-3 py-0.5 rounded-md border border-gray-300 text-[10px] font-bold uppercase tracking-wider text-gray-700">
                 {booking.status}
@@ -68,11 +69,12 @@ const BookingCardGuest = ({ booking }) => {
             </p>
           </div>
 
-          <button className="w-full bg-[#2D5A4C] text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#23473b] transition-colors mt-4">
-            View Details
-          </button>
+          {/* ✅ updated button */}
+          <Button
+            title="View Details"
+            className="w-full mt-4"
+          />
         </div>
-
       </div>
     </div>
   );

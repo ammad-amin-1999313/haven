@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { login, signup, logout } from "./authApi";
+import { login, signup, logout, UpdateProfile } from "./authApi";
 import { useDispatch } from "react-redux";
 import { clearUser, setUser } from "@/store/userSlice";
 
@@ -20,7 +20,6 @@ export function useLoginMutation() {
 
 export function useSignupMutation() {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: signup,
     onSuccess: (data) => {
@@ -40,4 +39,16 @@ export function useLogoutMutation() {
       qc.removeQueries({ queryKey: ["auth"] });
     },
   });
+}
+
+export function useUpdateProfileMutation() {
+  const qc = useQueryClient();
+  const dispatch = useDispatch();
+  return useMutation({
+    mutationFn: UpdateProfile,
+    onSuccess: (data) => {
+      qc.setQueryData(["auth"], data);
+      dispatch(setUser(data.user));
+    }
+  })
 }

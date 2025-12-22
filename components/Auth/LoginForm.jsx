@@ -1,24 +1,8 @@
-'use client';
+"use client";
 
 import React from "react";
 import InputField from "@/components/Common/InputField";
-
-// Local UI (kept here so AuthPage stays clean)
-function Button({ className = "", variant = "default", ...props }) {
-  const base =
-    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
-  const variants = {
-    default: "bg-emerald-700 text-white hover:bg-emerald-800",
-    outline: "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50",
-    ghost: "bg-transparent hover:bg-gray-100",
-  };
-  return (
-    <button
-      className={`${base} ${variants[variant] || variants.default} px-4 py-2 ${className}`}
-      {...props}
-    />
-  );
-}
+import Button from "@/components/ui/Button";
 
 function Card({ className = "", ...props }) {
   return (
@@ -52,36 +36,48 @@ export default function LoginForm({ loginState, setLoginState, onSubmit }) {
       <CardContent className="space-y-4">
         {/* Role toggle */}
         <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            fullWidth
+            variant="ghost"
             onClick={() => setLoginState((p) => ({ ...p, role: "guest" }))}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-              loginState.role === "guest" ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-900"
-            }`}
+            className={`transition-colors duration-150 ${loginState.role === "guest"
+                ? "bg-white shadow-sm text-gray-900 hover:bg-white"
+                : "bg-transparent text-gray-500 hover:text-gray-900"
+              }`}
           >
             Guest
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            size="sm"
+            fullWidth
+            variant="ghost"
             onClick={() => setLoginState((p) => ({ ...p, role: "owner" }))}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-              loginState.role === "owner" ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-900"
-            }`}
+            className={`transition-colors duration-150 ${loginState.role === "owner"
+                ? "bg-white shadow-sm text-gray-900 hover:bg-white"
+                : "bg-transparent text-gray-500 hover:text-gray-900"
+              }`}
           >
             Owner
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            size="sm"
+            fullWidth
+            variant="ghost"
             onClick={() => setLoginState((p) => ({ ...p, role: "admin" }))}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-              loginState.role === "admin" ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-900"
-            }`}
+            className={`transition-colors duration-150 ${loginState.role === "admin"
+                ? "bg-white shadow-sm text-gray-900 hover:bg-white"
+                : "bg-transparent text-gray-500 hover:text-gray-900"
+              }`}
           >
             Admin
-          </button>
+          </Button>
         </div>
+
+
+
 
         <form onSubmit={onSubmit} className="space-y-4">
           <InputField
@@ -111,7 +107,8 @@ export default function LoginForm({ loginState, setLoginState, onSubmit }) {
             onChange={(e) => setLoginState((p) => ({ ...p, password: e.target.value }))}
           />
 
-          <Button type="submit" className="w-full">
+          {/* Submit */}
+          <Button type="submit" fullWidth>
             Login as {loginState.role.charAt(0).toUpperCase() + loginState.role.slice(1)}
           </Button>
         </form>

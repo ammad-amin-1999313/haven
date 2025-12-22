@@ -10,7 +10,6 @@ const HotelCard = ({ hotel }) => {
   const router = useRouter();
 
   const handleViewDetails = () => {
-    // Navigate to hotel-detail page with the hotel id
     router.push(`/hotel-detail/${id}`);
   };
 
@@ -59,9 +58,9 @@ const HotelCard = ({ hotel }) => {
 
         {/* Button */}
         <Button
-          title={"View Details"}
-          className="mt-auto w-full bg-emerald-700 hover:bg-emerald-800"
-          onClick={handleViewDetails} // <-- call navigation on click
+          title="View Details"
+          onClick={handleViewDetails}
+          className="mt-auto w-full hover:bg-[#23473b]"
         />
       </div>
     </div>

@@ -1,44 +1,142 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { Upload, Star, ChevronLeft, Image as ImageIcon } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { Upload, Star, ChevronLeft, Image as ImageIcon, X } from "lucide-react";
 import Link from "next/link";
+import Button from "@/components/ui/Button";
+
+const MAX_IMAGES = 10;
+const MAX_AMENITIES = 20;
 
 export default function AddHotelPage() {
   const fileInputRef = useRef(null);
-  
+
   const [formData, setFormData] = useState({
     name: "",
-    location: "",
+    city: "",
+    country: "",
     description: "",
     rating: 5,
     status: "available",
+    // amenities handled separately but you can keep it here if you prefer
   });
 
-  const [imagePreview, setImagePreview] = useState(null);
+  // Images
+  const [images, setImages] = useState([]); // File[]
+  const imagePreviews = useMemo(
+    () => images.map((f) => ({ file: f, url: URL.createObjectURL(f) })),
+    [images]
+  );
 
-  // Handle Image Upload Logic
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+  // Amenities
+  const [amenityInput, setAmenityInput] = useState("");
+  const [amenities, setAmenities] = useState([]); // string[]
+
+  const [errors, setErrors] = useState({});
+
+  // ---------- Handlers ----------
+  const triggerFileInput = () => fileInputRef.current?.click();
+
+  const handleImagesChange = (e) => {
+    const selected = Array.from(e.target.files || []);
+
+    if (!selected.length) return;
+
+    // Enforce max images
+    const combined = [...images, ...selected].slice(0, MAX_IMAGES);
+    setImages(combined);
+
+    // reset input so user can re-select same files
+    e.target.value = "";
+  };
+
+  const removeImageAt = (idx) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleRating = (value) => setFormData((p) => ({ ...p, rating: value }));
+
+  const normalizeAmenity = (s) =>
+    s
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+
+  const addAmenity = () => {
+    const raw = amenityInput;
+    const val = normalizeAmenity(raw);
+    if (!val) return;
+
+    // limit
+    if (amenities.length >= MAX_AMENITIES) {
+      setErrors((p) => ({
+        ...p,
+        amenities: `Max ${MAX_AMENITIES} amenities allowed`,
+      }));
+      return;
+    }
+
+    // avoid duplicates (case-insensitive)
+    if (amenities.includes(val)) {
+      setAmenityInput("");
+      return;
+    }
+
+    setAmenities((prev) => [...prev, val]);
+    setAmenityInput("");
+    setErrors((p) => ({ ...p, amenities: "" }));
+  };
+
+  const removeAmenity = (val) => {
+    setAmenities((prev) => prev.filter((a) => a !== val));
+  };
+
+  const handleAmenityKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addAmenity();
     }
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
+  const validate = () => {
+    const next = {};
+    if (!formData.name.trim()) next.name = "Hotel name is required";
+    if (!formData.city.trim()) next.city = "City is required";
+    if (!formData.country.trim()) next.country = "Country is required";
+    if (images.length === 0) next.images = "Please select at least 1 image";
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
-  const handleRating = (value) => setFormData({ ...formData, rating: value });
+  // ✅ No API yet — just prepares payload shape for later
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    // This is what you will later send to Cloudinary + backend:
+    // - images (File[]) -> upload to cloudinary -> urls[]
+    // - amenities (string[]) -> send directly
+    const draftPayload = {
+      ...formData,
+      amenities,
+      images, // File[] for now (later becomes imageUrls[])
+    };
+
+    console.log("READY FOR API payload draft:", draftPayload);
+    // Later: upload images -> get urls -> send to backend
+  };
+
+  const inputClasses = (error) =>
+    `w-full px-4 py-3 rounded-xl border bg-[#FDFDFD]
+     focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition
+     ${error ? "border-red-500" : "border-gray-200"}`;
 
   return (
     <div className="min-h-screen bg-[#F9F7F5] py-12 px-4">
       <div className="container mx-auto max-w-4xl">
-        
         {/* Navigation */}
-        <Link 
-          href="/owner-hotels" 
+        <Link
+          href="/owner-hotels"
           className="flex items-center gap-2 text-gray-500 hover:text-[#2D5A4C] transition-colors mb-6 font-bold text-sm"
         >
           <ChevronLeft size={16} />
@@ -47,81 +145,232 @@ export default function AddHotelPage() {
 
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-serif font-bold text-[#1A2B2B] mb-2">Add Hotel</h1>
-          <p className="text-gray-500">Fill out the form below to add your hotel listing.</p>
+          <h1 className="text-4xl font-serif font-bold text-[#1A2B2B] mb-2">
+            Add Hotel
+          </h1>
+          <p className="text-gray-500">
+            Fill out the form below to add your hotel listing.
+          </p>
         </div>
 
         {/* Main Form Card */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
-          <h2 className="text-2xl font-serif font-bold text-[#1A2B2B] mb-2">New Property Details</h2>
-          <p className="text-gray-400 text-sm mb-8">Please provide accurate information about your hotel.</p>
+          <h2 className="text-2xl font-serif font-bold text-[#1A2B2B] mb-2">
+            New Property Details
+          </h2>
+          <p className="text-gray-400 text-sm mb-8">
+            Please provide accurate information about your hotel.
+          </p>
 
-          <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-            
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Hotel Name */}
             <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Hotel Name</label>
+              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                Hotel Name
+              </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, name: e.target.value }))
+                }
                 placeholder="Enter hotel name"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition"
+                className={inputClasses(errors.name)}
               />
+              {errors.name && (
+                <p className="text-sm text-red-500 mt-2 font-medium">
+                  {errors.name}
+                </p>
+              )}
             </div>
 
-            {/* Location */}
+            {/* City */}
             <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Location</label>
+              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                City
+              </label>
               <input
                 type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                placeholder="Enter hotel location"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition"
+                value={formData.city}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, city: e.target.value }))
+                }
+                placeholder="Enter hotel city"
+                className={inputClasses(errors.city)}
               />
+              {errors.city && (
+                <p className="text-sm text-red-500 mt-2 font-medium">
+                  {errors.city}
+                </p>
+              )}
             </div>
 
-            {/* Image Upload Section */}
+            {/* Country */}
             <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Image</label>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
-                className="hidden" 
+              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                value={formData.country}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, country: e.target.value }))
+                }
+                placeholder="Enter hotel country"
+                className={inputClasses(errors.country)}
               />
-              <button 
-                type="button" 
-                onClick={triggerFileInput}
-                className="flex items-center gap-2 bg-[#2D5A4C] text-white px-5 py-2.5 rounded-lg text-sm font-semibold mb-4 hover:bg-[#23473b] transition-all shadow-md active:scale-95"
-              >
-                <Upload size={18} />
-                Upload Image
-              </button>
+              {errors.country && (
+                <p className="text-sm text-red-500 mt-2 font-medium">
+                  {errors.country}
+                </p>
+              )}
+            </div>
 
-              <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 aspect-video flex items-center justify-center">
-                {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
+            {/* Images Upload Section (Multiple) */}
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                  Images
+                </label>
+                <p className="text-xs text-gray-400 font-bold">
+                  {images.length}/{MAX_IMAGES}
+                </p>
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImagesChange}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+
+              <Button
+                type="button"
+                onClick={triggerFileInput}
+                title="Upload Images"
+                iconLeft={<Upload size={18} />}
+                className="mb-4 shadow-md"
+              />
+
+              {errors.images && (
+                <p className="text-sm text-red-500 mb-3 font-medium">
+                  {errors.images}
+                </p>
+              )}
+
+              {/* Preview Grid */}
+              {images.length === 0 ? (
+                <div className="relative w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 aspect-video flex items-center justify-center">
                   <div className="text-gray-300 flex flex-col items-center gap-2">
                     <ImageIcon size={48} />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">No Image Selected</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      No Images Selected
+                    </p>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {imagePreviews.map(({ url }, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="relative rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 aspect-video"
+                    >
+                      <img
+                        src={url}
+                        alt={`Preview ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImageAt(idx)}
+                        className="absolute top-2 right-2 bg-white/90 hover:bg-white text-gray-700 rounded-full p-1 shadow"
+                        aria-label="Remove image"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400 mt-3">
+                Tip: Choose a cover image first — we’ll use the first image as the main photo.
+              </p>
             </div>
 
-            {/* Rating Section */}
+            {/* Amenities (Array, max 20) */}
             <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Rating</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                  Amenities
+                </label>
+                <p className="text-xs text-gray-400 font-bold">
+                  {amenities.length}/{MAX_AMENITIES}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={amenityInput}
+                  onChange={(e) => setAmenityInput(e.target.value)}
+                  onKeyDown={handleAmenityKeyDown}
+                  placeholder="e.g. wifi, parking, pool"
+                  className={inputClasses(errors.amenities)}
+                />
+                <Button
+                  type="button"
+                  title="Add"
+                  onClick={addAmenity}
+                  className="px-5"
+                />
+              </div>
+
+              {errors.amenities && (
+                <p className="text-sm text-red-500 mt-2 font-medium">
+                  {errors.amenities}
+                </p>
+              )}
+
+              {amenities.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {amenities.map((a) => (
+                    <span
+                      key={a}
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2D5A4C]/10 text-[#2D5A4C] text-xs font-bold"
+                    >
+                      {a}
+                      <button
+                        type="button"
+                        onClick={() => removeAmenity(a)}
+                        className="text-[#2D5A4C] hover:opacity-70"
+                        aria-label={`Remove ${a}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Rating */}
+            <div>
+              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                Rating
+              </label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
                     size={24}
-                    className={`cursor-pointer transition-all hover:scale-110 ${star <= formData.rating ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
+                    className={`cursor-pointer transition-all hover:scale-110 ${
+                      star <= formData.rating
+                        ? "text-amber-400 fill-amber-400"
+                        : "text-gray-200"
+                    }`}
                     onClick={() => handleRating(star)}
                   />
                 ))}
@@ -130,68 +379,38 @@ export default function AddHotelPage() {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Description</label>
+              <label className="block text-sm font-bold text-[#1A2B2B] mb-2">
+                Description
+              </label>
               <textarea
                 rows={4}
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, description: e.target.value }))
+                }
                 placeholder="Describe your property..."
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition resize-none"
               />
             </div>
 
-            {/* Status Radio Section */}
-            <div>
-              <label className="block text-sm font-bold text-[#1A2B2B] mb-4">Availability Status</label>
-              <div className="flex items-center gap-8">
-                <StatusRadio 
-                  label="Available" 
-                  checked={formData.status === "available"} 
-                  onChange={() => setFormData({...formData, status: "available"})} 
-                />
-                <StatusRadio 
-                  label="Unavailable" 
-                  checked={formData.status === "unavailable"} 
-                  onChange={() => setFormData({...formData, status: "unavailable"})} 
-                />
-              </div>
-            </div>
-
-            {/* Action Button */}
+            {/* Save */}
             <div className="pt-6 flex justify-center border-t border-gray-50">
-              <button
+              <Button
                 type="submit"
-                className="w-full max-w-xs bg-[#2D5A4C] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-[#2D5A4C]/20 hover:bg-[#23473b] hover:shadow-xl transition-all transform active:scale-95"
-              >
-                Save Hotel
-              </button>
+                title="Save Hotel"
+                className="w-full max-w-xs py-4 text-lg font-bold shadow-lg shadow-[#2D5A4C]/20 hover:shadow-xl"
+                rounded="rounded-xl"
+              />
             </div>
           </form>
         </div>
       </div>
-      
+
       <footer className="mt-20 text-center pb-8">
         <p className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.3em]">
           © 2024 Haven. All rights reserved.
         </p>
       </footer>
     </div>
-  );
-}
-
-function StatusRadio({ label, checked, onChange }) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer group">
-      <div className="relative">
-        <input type="radio" className="peer hidden" checked={checked} onChange={onChange} />
-        <div className="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-[#2D5A4C] transition" />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#2D5A4C]" />
-        </div>
-      </div>
-      <span className={`text-sm font-bold transition-colors ${checked ? "text-[#1A2B2B]" : "text-gray-400 group-hover:text-gray-600"}`}>
-        {label}
-      </span>
-    </label>
   );
 }
