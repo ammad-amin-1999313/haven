@@ -7,12 +7,21 @@ import { Mail, Phone, LogOut, X } from "lucide-react";
 import { mockUserBookings, mockBookingRequests } from "@/lib/data";
 import Image from "next/image";
 import Button from "../ui/Button";
+import { useOwnerHotelDataQuery } from "@/features/hotel/useHotelsQuery";
+import { useRouter } from "next/navigation";
 
 const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
   const [mounted, setMounted] = useState(false);
   const isOwner = user?.role === "owner";
-  console.log(user);
-  
+  const ownerId = isOwner ? (user?._id || user?.id) : null;
+  const { data: ownerData, isLoading: hotelsLoading } = useOwnerHotelDataQuery(ownerId);
+  const ownerHotels = ownerData?.hotels || [];
+  const router = useRouter()
+  const handleViewAllHotels = () => {
+    onClose()
+    router.push("/owner-hotels");
+  };
+
   // Tab State: Owners have 3 tabs, Guests have 2
   const [tab, setTab] = useState("profile");
 
@@ -61,9 +70,8 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
 
           {/* Dynamic Tabs based on Role */}
           <div
-            className={`mb-5 rounded-xl bg-gray-100 p-1 grid ${
-              isOwner ? "grid-cols-3" : "grid-cols-2"
-            }`}
+            className={`mb-5 rounded-xl bg-gray-100 p-1 grid ${isOwner ? "grid-cols-3" : "grid-cols-2"
+              }`}
           >
             <TabBtn
               active={tab === "profile"}
@@ -142,46 +150,82 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
           )}
 
           {/* --- OWNER: HOTELS TAB --- */}
+
+          {/* --- OWNER: HOTELS TAB (With Placeholder Stats) --- */}
           {isOwner && tab === "hotels" && (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 animate-in fade-in duration-300">
-              {mockUserBookings.slice(0, 3).map((hotel) => (
-                <div
-                  key={hotel.id}
-                  className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-[#2D5A4C]/30 transition-colors bg-white shadow-sm"
-                >
-                  <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg">
-                    <Image
-                      src={hotel.image}
-                      alt={hotel.hotelName}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-serif font-bold text-gray-900 truncate">
-                      {hotel.hotelName}
-                    </h4>
-                    <p className="text-xs text-gray-500">{hotel.location}</p>
-                    <p className="text-[10px] font-bold text-[#2D5A4C] mt-1 uppercase">
-                      32 bookings • 45 rooms
-                    </p>
-                  </div>
+              {hotelsLoading ? (
+                <div className="flex flex-col items-center py-10 text-gray-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D5A4C] mb-2" />
+                  <p className="text-xs">Fetching your properties...</p>
                 </div>
-              ))}
+              ) : ownerHotels.length === 0 ? (
+                <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
+                  <HotelIcon className="mx-auto text-gray-300 mb-2" size={32} />
+                  <p className="text-sm text-gray-500">You haven't listed any hotels yet.</p>
+                </div>
+              ) : (
+                ownerHotels.slice(0, 3).map((hotel, index) => {
+                  // Temporary logic for dummy stats based on index to keep them consistent
+                  const dummyBookings = (index + 1) * 12 + 5;
+                  const dummyRequests = (index + 1) * 3 + 2;
 
-              <Link
-                href="/owner-hotels"
-                onClick={onClose}
-                className="block w-full mt-4"
-              >
+                  return (
+                    <div
+                      key={hotel._id}
+                      className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-[#2D5A4C]/30 transition-all bg-white shadow-sm group"
+                    >
+                      <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                        <Image
+                          src={hotel.images?.[0] || "/placeholder-hotel.jpg"}
+                          alt={hotel.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-serif font-bold text-gray-900 truncate capitalize">
+                          {hotel.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 capitalize">
+                          {hotel.city + " " + hotel.country || "Primary Location"}
+                        </p>
+
+                        {/* New Stats Row */}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[10px] font-bold text-gray-700 uppercase">
+                              {dummyBookings} Bookings
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            <span className="text-[10px] font-bold text-gray-700 uppercase">
+                              {dummyRequests} Requests
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              <div className="pt-2">
                 <Button
-                  title="View All Hotels"
-                  bg="bg-transparent"
+                  onClick={handleViewAllHotels}
+                  title={ownerHotels.length > 3
+                    ? `View All ${ownerHotels.length} Properties`
+                    : "Manage Properties"
+                  }
+                  variant="primary"
                   textColor="text-gray-700"
                   border="border border-gray-200"
-                  className="w-full py-3 hover:bg-gray-50"
+                  className="w-full py-3"
+                  disabled={ownerHotels.length <= 0}
                 />
-              </Link>
+              </div>
             </div>
           )}
 
@@ -206,11 +250,10 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
                   </div>
 
                   <span
-                    className={`px-3 py-1 rounded-lg text-[10px] font-bold border uppercase ${
-                      item.status === "pending"
-                        ? "bg-amber-50 text-amber-600 border-amber-100"
-                        : "bg-[#2D5A4C]/10 text-[#2D5A4C] border-[#2D5A4C]/20"
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold border uppercase ${item.status === "pending"
+                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                      : "bg-[#2D5A4C]/10 text-[#2D5A4C] border-[#2D5A4C]/20"
+                      }`}
                   >
                     {item.status}
                   </span>
@@ -251,11 +294,10 @@ const TabBtn = ({ active, onClick, label }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`rounded-lg py-2 text-sm font-bold transition-all ${
-      active
-        ? "bg-white shadow-sm text-[#2D5A4C]"
-        : "text-gray-500 hover:text-gray-900"
-    }`}
+    className={`rounded-lg py-2 text-sm font-bold transition-all ${active
+      ? "bg-white shadow-sm text-[#2D5A4C]"
+      : "text-gray-500 hover:text-gray-900"
+      }`}
   >
     {label}
   </button>

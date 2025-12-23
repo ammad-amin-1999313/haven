@@ -1,20 +1,21 @@
 import HotelDetails from "@/components/HotelDetails";
-import { hotelDetails } from "@/lib/data";
 
-// 1. Add 'async' to the function
 export default async function HotelDetailPage({ params }) {
-  
-  // 2. Await the params promise
-  const { id } = await params; 
+  // 1. Await the params
+  const { id } = await params;
 
-  // 3. Use the resolved 'id' to find the hotel
-  const hotel = hotelDetails.find((h) => String(h.id) === id) ?? hotelDetails[0];
-
-  if (!hotel) return <div className="p-10 text-center">Hotel not found</div>;
+  // 2. Defensive check
+  if (!id) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-gray-500">Hotel ID not found in URL.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-10 mx-auto px-4">
-      <HotelDetails hotelId={id} hotel={hotel} />
+      <HotelDetails hotelId={id} />
     </div>
   );
 }

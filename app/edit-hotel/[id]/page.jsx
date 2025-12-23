@@ -1,253 +1,235 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Upload, Star, ChevronLeft, Image as ImageIcon } from "lucide-react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { Upload, Star, ChevronLeft, X, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import Button from "@/components/ui/Button";
+import { useSingleHotelQuery } from "@/features/hotel/useHotelsQuery";
+import { useEditHotelDataMutation } from "@/features/hotel/useHotelMutation";
+
+const MAX_IMAGES = 10;
+const CURRENCIES = ["USD", "PKR", "EUR", "GBP", "AED"];
 
 export default function EditHotelPage() {
-    const params = useParams();
+    const { id: hotelId } = useParams();
     const router = useRouter();
-    const hotelId = params.id;
     const fileInputRef = useRef(null);
 
+    // --- API QUERIES & MUTATIONS ---
+    const { data: hotel, isLoading } = useSingleHotelQuery(hotelId);
+    const { mutate: updateHotel, isPending: isUpdating } = useEditHotelDataMutation();
+
+    // --- UI & DATA STATES ---
     const [formData, setFormData] = useState({
         name: "",
-        location: "",
+        city: "",
+        country: "",
         description: "",
         rating: 5,
-        status: "available",
+        startingPricePerNight: "",
+        currency: "USD",
     });
 
-    const [imagePreview, setImagePreview] = useState(null);
+    const [existingImages, setExistingImages] = useState([]);
+    const [newImageFiles, setNewImageFiles] = useState([]);
+    const [amenityInput, setAmenityInput] = useState("");
+    const [amenities, setAmenities] = useState([]);
 
-    // 1. Fetch existing hotel data using the ID from the URL
+    // --- SYNC STATE WITH INCOMING DATA ---
     useEffect(() => {
-        if (hotelId) {
-            // Logic for fetching hotel by ID from your API would go here
-            // For now, we use mock data to demonstrate the edit state
+        if (hotel) {
+            // Adjust 'hotel.hotel' based on if your API wraps the object
+            const h = hotel;
+
             setFormData({
-                name: "The Grand Horizon Resort",
-                location: "Malibu, California",
-                description: "A luxury seaside experience with panoramic views and world-class amenities.",
-                rating: 5,
-                status: "available",
+                name: h.name || "",
+                city: h.city || "",
+                country: h.country || "",
+                description: h.description || "",
+                rating: h.rating || 5,
+                startingPricePerNight: h.startingPricePerNight || "",
+                currency: h.currency || "USD",
             });
-            setImagePreview("https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=800");
+            setExistingImages(h.images || []);
+            setAmenities(h.amenities || []);
         }
-    }, [hotelId]);
+    }, [hotel]);
 
-    // 2. Image Handling
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
-        }
+    // --- HANDLERS ---
+    const handleSave = () => {
+        const data = new FormData();
+
+        // Append text fields
+        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+
+        // Append arrays (backend usually expects JSON string for multipart or multiple keys)
+        data.append("amenities", JSON.stringify(amenities));
+        data.append("existingImages", JSON.stringify(existingImages));
+        
+        // Append new files
+        newImageFiles.forEach((file) => {
+            data.append("images", file);
+        });
+
+        updateHotel({ id: hotelId, data });
     };
 
-    const triggerFileInput = () => {
-        fileInputRef.current.click();
+    const handleImagesChange = (e) => {
+        const selected = Array.from(e.target.files || []);
+        setNewImageFiles([...newImageFiles, ...selected].slice(0, MAX_IMAGES - existingImages.length));
+        e.target.value = "";
     };
 
-    const handleRating = (value) => setFormData({ ...formData, rating: value });
+    const removeExistingImage = (url) => setExistingImages(prev => prev.filter(img => img !== url));
+    const removeNewImage = (idx) => setNewImageFiles(prev => prev.filter((_, i) => i !== idx));
 
-    // 3. Form Submission
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        console.log("Updating Hotel ID:", hotelId, "Data:", formData);
-
-        // Example: await fetch(`/api/hotels/${hotelId}`, { method: 'PUT', body: JSON.stringify(formData) })
-
-        // After success, navigate back
-        router.push("/owner-hotels");
+    const addAmenity = () => {
+        const val = amenityInput.trim().toLowerCase();
+        if (!val || amenities.includes(val)) return;
+        setAmenities([...amenities, val]);
+        setAmenityInput("");
     };
+
+    const handleNumericRating = (e) => {
+        let val = parseFloat(e.target.value);
+        setFormData({ ...formData, rating: Math.min(5, Math.max(0, val || 0)) });
+    };
+
+    const newImagePreviews = useMemo(
+        () => newImageFiles.map((f) => ({ file: f, url: URL.createObjectURL(f) })),
+        [newImageFiles]
+    );
+
+    const inputClasses = `w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition`;
+
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-[#F9F7F5]">
+            <Loader2 className="animate-spin text-[#2D5A4C]" size={48} />
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-[#F9F7F5] py-12 px-4">
-            <div className="container mx-auto max-w-4xl">
-
-                {/* Back Link */}
-                <Link
-                    href="/owner-hotels"
-                    className="flex items-center gap-2 text-gray-500 hover:text-[#2D5A4C] transition-colors mb-6 font-bold text-sm"
-                >
-                    <ChevronLeft size={16} />
-                    Back to My Hotels
+            <div className="container mx-auto max-w-6xl">
+                <Link href="/owner-hotels" className="flex items-center gap-2 text-gray-500 hover:text-[#2D5A4C] mb-6 font-bold text-sm">
+                    <ChevronLeft size={16} /> Back to My Hotels
                 </Link>
 
-                {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-4xl font-serif font-bold text-[#1A2B2B] mb-2">Edit Hotel</h1>
+                    <p className="text-gray-500 text-sm">Property ID: <span className="font-mono text-[#2D5A4C]">{hotelId}</span></p>
                 </div>
 
-                {/* Form Container */}
                 <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
-                    <h2 className="text-2xl font-serif font-bold text-[#1A2B2B] mb-2">Update Property</h2>
-                    <p className="text-gray-400 text-sm mb-8">Modify the details below and save your changes.</p>
-
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-
+                    <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                         {/* Hotel Name */}
                         <div>
                             <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Hotel Name</label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="Enter hotel name"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition"
-                                required
-                            />
+                            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className={inputClasses} />
                         </div>
 
                         {/* Location */}
-                        <div>
-                            <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Location</label>
-                            <input
-                                type="text"
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                placeholder="Enter hotel location"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition"
-                                required
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">City</label>
+                                <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className={inputClasses} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Country</label>
+                                <input type="text" value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className={inputClasses} />
+                            </div>
                         </div>
 
-                        {/* Image Upload Area */}
-                        <div>
-                            <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Property Image</label>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleImageChange}
-                                accept="image/*"
-                                className="hidden"
-                            />
-                            <button
-                                type="button"
-                                onClick={triggerFileInput}
-                                className="flex items-center gap-2 bg-[#2D5A4C] text-white px-5 py-2.5 rounded-lg text-sm font-semibold mb-4 hover:bg-[#23473b] transition-all shadow-md"
-                            >
-                                <Upload size={18} />
-                                Change Image
-                            </button>
+                        {/* Pricing */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Price per Night</label>
+                                <input type="number" value={formData.startingPricePerNight} onChange={(e) => setFormData({ ...formData, startingPricePerNight: e.target.value })} className={inputClasses} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Currency</label>
+                                <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} className={inputClasses}>
+                                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                        </div>
 
-                            <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 aspect-video flex items-center justify-center group">
-                                {imagePreview ? (
-                                    <>
-                                        <img
-                                            src={imagePreview}
-                                            alt="Preview"
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                        />
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <span className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-xs font-bold text-gray-700">
-                                                Click Change Image to replace
-                                            </span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="text-gray-300 flex flex-col items-center gap-2">
-                                        <ImageIcon size={48} />
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">No Image Uploaded</p>
+                        {/* Images */}
+                        <div>
+                            <label className="block text-sm font-bold text-[#1A2B2B] mb-4">Property Images ({existingImages.length + newImageFiles.length}/{MAX_IMAGES})</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {existingImages.map((url, idx) => (
+                                    <div key={`ex-${idx}`} className="relative h-40 rounded-2xl overflow-hidden border shadow-sm">
+                                        <img src={url} className="w-full h-full object-cover" alt="current" />
+                                        <button type="button" onClick={() => removeExistingImage(url)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><X size={14} /></button>
+                                        <div className="absolute bottom-0 inset-x-0 bg-black/40 text-[8px] text-white text-center py-1 font-bold">CURRENT</div>
                                     </div>
+                                ))}
+                                {newImagePreviews.map(({ url }, idx) => (
+                                    <div key={`new-${idx}`} className="relative h-40 rounded-2xl overflow-hidden border-2 border-dashed border-[#2D5A4C]/30">
+                                        <img src={url} className="w-full h-full object-cover" alt="new" />
+                                        <button type="button" onClick={() => removeNewImage(idx)} className="absolute top-2 right-2 bg-gray-800 text-white p-1 rounded-full"><X size={14} /></button>
+                                        <div className="absolute bottom-0 inset-x-0 bg-[#2D5A4C] text-[8px] text-white text-center py-1 font-bold">NEW</div>
+                                    </div>
+                                ))}
+                                {(existingImages.length + newImageFiles.length) < MAX_IMAGES && (
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="h-40 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:text-[#2D5A4C] bg-gray-50/50">
+                                        <Upload size={24} />
+                                        <span className="text-[10px] font-bold mt-2">ADD MORE</span>
+                                    </button>
                                 )}
+                            </div>
+                            <input type="file" ref={fileInputRef} onChange={handleImagesChange} multiple className="hidden" accept="image/*" />
+                        </div>
+
+                        {/* Amenities */}
+                        <div>
+                            <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Amenities</label>
+                            <div className="flex gap-2 mb-3">
+                                <input type="text" value={amenityInput} onChange={(e) => setAmenityInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())} placeholder="e.g. WiFi" className={inputClasses} />
+                                <Button type="button" title="Add" onClick={addAmenity} />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {amenities.map(a => (
+                                    <span key={a} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2D5A4C]/10 text-[#2D5A4C] text-[10px] font-bold uppercase border border-[#2D5A4C]/20">
+                                        {a} <X size={12} className="cursor-pointer" onClick={() => setAmenities(prev => prev.filter(x => x !== a))} />
+                                    </span>
+                                ))}
                             </div>
                         </div>
 
                         {/* Rating */}
-                        <div>
-                            <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Star Rating</label>
+                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex items-center gap-6">
                             <div className="flex gap-1">
                                 {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                        key={star}
-                                        size={24}
-                                        className={`cursor-pointer transition-all hover:scale-110 ${star <= formData.rating ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
-                                        onClick={() => handleRating(star)}
-                                    />
+                                    <Star key={star} size={28} className={`${star <= Math.round(formData.rating) ? "text-amber-400 fill-amber-400" : "text-gray-200"}`} />
                                 ))}
                             </div>
+                            <input type="number" step="0.1" max="5" min="0" value={formData.rating} onChange={handleNumericRating} className="w-20 px-2 py-1 font-bold text-[#2D5A4C] rounded border" />
                         </div>
 
                         {/* Description */}
                         <div>
                             <label className="block text-sm font-bold text-[#1A2B2B] mb-2">Description</label>
-                            <textarea
-                                rows={4}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                placeholder="Describe your property..."
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#FDFDFD] focus:outline-none focus:ring-2 focus:ring-[#2D5A4C]/20 transition resize-none"
-                                required
+                            <textarea rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`${inputClasses} resize-none`} />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-8 flex flex-col sm:flex-row gap-4">
+                            <Button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={isUpdating}
+                                title={isUpdating ? "Saving..." : "Save Changes"}
+                                iconLeft={isUpdating ? <Loader2 className="animate-spin" size={18} /> : null}
+                                className="flex-1 py-4 text-lg"
                             />
-                        </div>
-
-                        {/* Status */}
-                        <div>
-                            <label className="block text-sm font-bold text-[#1A2B2B] mb-4">Availability Status</label>
-                            <div className="flex items-center gap-8">
-                                <StatusRadio
-                                    label="Available"
-                                    checked={formData.status === "available"}
-                                    onChange={() => setFormData({ ...formData, status: "available" })}
-                                />
-                                <StatusRadio
-                                    label="Unavailable"
-                                    checked={formData.status === "unavailable"}
-                                    onChange={() => setFormData({ ...formData, status: "unavailable" })}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center border-t border-gray-50">
-                            <button
-                                type="submit"
-                                className="w-full  bg-[#2D5A4C] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-[#2D5A4C]/20 hover:bg-[#23473b] hover:shadow-xl transition-all transform active:scale-95"
-                            >
-                                Save Changes
-                            </button>
-                            <Link
-                                href="/owner-hotels"
-                                className="w-full  bg-white text-gray-400 py-4 rounded-xl font-bold text-lg border border-gray-200 text-center hover:bg-gray-50 transition-all"
-                            >
-                                Cancel
-                            </Link>
+                            <Button type="button" variant="outline" title="Cancel" onClick={() => router.back()} className="flex-1 py-4 text-lg" />
                         </div>
                     </form>
                 </div>
             </div>
-
-            <footer className="mt-20 text-center pb-8">
-                <p className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.3em]">
-                    © 2024 Haven. All rights reserved.
-                </p>
-            </footer>
         </div>
-    );
-}
-
-// Helper Radio Component
-function StatusRadio({ label, checked, onChange }) {
-    return (
-        <label className="flex items-center gap-2 cursor-pointer group">
-            <div className="relative">
-                <input
-                    type="radio"
-                    className="peer hidden"
-                    checked={checked}
-                    onChange={onChange}
-                />
-                <div className="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-[#2D5A4C] transition" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#2D5A4C]" />
-                </div>
-            </div>
-            <span className={`text-sm font-bold transition-colors ${checked ? "text-[#1A2B2B]" : "text-gray-400 group-hover:text-gray-600"}`}>
-                {label}
-            </span>
-        </label>
     );
 }
