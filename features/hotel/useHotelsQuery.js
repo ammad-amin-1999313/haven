@@ -17,10 +17,9 @@ export function useSingleHotelQuery(id) {
   })
 }
 
-export function useOwnerHotelDataQuery(ownerId) {
+export function useOwnerHotelDataQuery() {
   return useQuery({
-    queryKey: ["owner-hotels", ownerId],
-    queryFn: () => fetchOwnerHotels(ownerId),
-    enabled: !!ownerId,
+    queryKey: ["owner-hotels"],
+    queryFn: () => fetchOwnerHotels(),
   })
 }

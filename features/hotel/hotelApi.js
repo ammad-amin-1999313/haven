@@ -15,16 +15,12 @@ export async function fetchSingleHotel(id) {
     return res.data
 }
 
-export async function fetchOwnerHotels(ownerId) {
-    const res = await api.get(`/api/hotels/owner-hotels/${ownerId}`)
+export async function fetchOwnerHotels() {
+    const res = await api.get("/api/hotels/owner-hotels")
     return res.data
 }
 
 export async function updateHotel({ id, data }) {
-    const res = await api.patch(`/api/hotels/${id}`, data, {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    });
+    const res = await api.patch(`/api/hotels/edit-hotel/${id}`, data);
     return res.data;
 }

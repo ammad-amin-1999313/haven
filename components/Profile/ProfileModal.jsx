@@ -14,7 +14,7 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
   const [mounted, setMounted] = useState(false);
   const isOwner = user?.role === "owner";
   const ownerId = isOwner ? (user?._id || user?.id) : null;
-  const { data: ownerData, isLoading: hotelsLoading } = useOwnerHotelDataQuery(ownerId);
+  const { data: ownerData, isLoading: hotelsLoading } = useOwnerHotelDataQuery();
   const ownerHotels = ownerData?.hotels || [];
   const router = useRouter()
   const handleViewAllHotels = () => {

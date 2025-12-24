@@ -29,6 +29,7 @@ const Button = ({
   className = "",
   type = "button",
   disabled = false,
+  textColor,
   ...props
 }) => {
   const base =

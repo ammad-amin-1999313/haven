@@ -15,7 +15,7 @@ export default function OwnerHotelsPage() {
   const userData = useSelector((state) => state.user.user);
   const ownerId = userData?._id || userData?.id;
 
-  const { data: hotel, isLoading } = useOwnerHotelDataQuery(ownerId);
+  const { data: hotel, isLoading } = useOwnerHotelDataQuery();
 
   const handleEdit = (id) => {
     router.push(`/edit-hotel/${id}`);
@@ -46,7 +46,7 @@ export default function OwnerHotelsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {hotel?.hotels?.map((hotel) => (
             <div
-              key={hotel.id}
+              key={hotel?.id}
               className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
             >
               {/* Image Container */}

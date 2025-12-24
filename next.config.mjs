@@ -9,6 +9,11 @@ const nextConfig = {
       },
     ],
   },
+  // Disable problematic source maps in development
+  productionBrowserSourceMaps: false,
+  
+  // Add empty turbopack config to silence the warning
+  turbopack: {},
 };
 
 export default nextConfig;
