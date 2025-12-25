@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React from "react";
 import { Star, MapPin } from "lucide-react";
 import Button from "../ui/Button";
@@ -7,16 +7,8 @@ import { useRouter } from "next/navigation";
 
 const HotelCard = ({ hotel }) => {
   // Destructuring based on your provided JSON object
-  const { 
-    images, 
-    name, 
-    city, 
-    country, 
-    rating, 
-    amenities, 
-    _id 
-  } = hotel;
-  
+  const { images, name, city, country, rating, amenities, _id } = hotel;
+
   const router = useRouter();
 
   const handleViewDetails = () => {
@@ -25,7 +17,7 @@ const HotelCard = ({ hotel }) => {
   };
 
   return (
-    <div 
+    <div
       onClick={handleViewDetails}
       className="group rounded-2xl bg-white shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full border border-gray-100"
     >
@@ -44,8 +36,8 @@ const HotelCard = ({ hotel }) => {
         />
         {/* Quick Rating Badge Overlay (Optional) */}
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center shadow-sm">
-            <Star className="h-3 w-3 mr-1 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-bold text-gray-800">{rating}</span>
+          <Star className="h-3 w-3 mr-1 fill-amber-400 text-amber-400" />
+          <span className="text-xs font-bold text-gray-800">{rating}</span>
         </div>
       </div>
 
@@ -54,7 +46,9 @@ const HotelCard = ({ hotel }) => {
         {/* Location Row */}
         <div className="flex items-center text-gray-500 text-sm mb-2">
           <MapPin className="h-3.5 w-3.5 mr-1 text-[#2D5A4C]" />
-          <span className="truncate">{city}, {country}</span>
+          <span className="truncate">
+            {city}, {country}
+          </span>
         </div>
 
         {/* Title */}
@@ -84,8 +78,8 @@ const HotelCard = ({ hotel }) => {
           <Button
             title="View Details"
             onClick={(e) => {
-                e.stopPropagation(); // Prevent double trigger with div onClick
-                handleViewDetails();
+              e.stopPropagation(); // Prevent double trigger with div onClick
+              handleViewDetails();
             }}
             className="mt-auto w-full hover:bg-[#23473b]"
           />

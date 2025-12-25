@@ -1,12 +1,18 @@
-'use client'
+"use client";
 import HotelCard from "@/components/Card/HotelCard";
 import Hero from "@/components/Hero/Hero";
 import Button from "@/components/ui/Button";
 import ValueProposition from "@/components/ValueProposition";
-import { hotels } from "@/lib/data";
+import { useHotelsQuery } from "@/features/hotel/useHotelsQuery";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  
+  const router = useRouter();
+  const { data: hotels, isLoading, isFetching } = useHotelsQuery({ limit: 4 });
+  const handleViewAll = () => {
+    router.push("/hotels");
+    console.log("clicked");
+  };
   return (
     <>
       {/* Hero Section */}
@@ -21,20 +27,29 @@ export default function Home() {
                 Featured Destinations
               </h2>
               <p className="text-muted-foreground max-w-xl">
-                Hand-picked selection of the most exclusive and comfortable stays for your next journey.
+                Hand-picked selection of the most exclusive and comfortable
+                stays for your next journey.
               </p>
             </div>
-            <Button title={"View All Hotels"} className="hidden md:flex" />
+            <Button
+              onClick={handleViewAll}
+              title={"View All Hotels"}
+              className="hidden md:flex"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {hotels.map((hotel) => (
-              <HotelCard key={hotel.id} hotel={hotel} />
+            {hotels?.hotels?.map((hotel) => (
+              <HotelCard key={hotel._id} hotel={hotel} />
             ))}
           </div>
 
           <div className="mt-10 text-center md:hidden">
-            <Button title={"View All Hotels"} className="w-full" />
+            <Button
+              onClick={handleViewAll}
+              title={"View All Hotels"}
+              className="w-full"
+            />
           </div>
         </div>
       </section>
@@ -44,6 +59,5 @@ export default function Home() {
         <ValueProposition />
       </div>
     </>
-
   );
 }

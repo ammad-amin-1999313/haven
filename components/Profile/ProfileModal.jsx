@@ -3,9 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Mail, Phone, LogOut, X } from "lucide-react";
-import { mockUserBookings, mockBookingRequests } from "@/lib/data";
 import Image from "next/image";
+import { Mail, Phone, LogOut, X } from "lucide-react";
 import Button from "../ui/Button";
 import { useOwnerHotelDataQuery } from "@/features/hotel/useHotelsQuery";
 import { useRouter } from "next/navigation";
@@ -16,25 +15,39 @@ import {
 
 const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
   const [mounted, setMounted] = useState(false);
+
   const isOwner = user?.role === "owner";
-  const ownerId = isOwner ? user?._id || user?.id : null;
-  const { data: ownerData, isLoading: hotelsLoading } =
-    useOwnerHotelDataQuery();
-  const ownerHotels = ownerData?.hotels || [];
-  // 3. CALL YOUR BOOKING QUERY HERE (Conditional for Guests)
-  const { data: bookingData, isLoading: bookingsLoading } =
-    useGuestBookingQuery({});
-  // Call Booking Query for Owner
-  const { data: OwnerBookingData, isLoading } = useOwnerBookingQuery({});
+  const isAdmin = user?.role === "admin";
+  const isGuest = user?.role === "guest";
 
   const router = useRouter();
+
+  // ✅ Tabs:
+  // - Admin: only "profile"
+  // - Owner: profile + hotels + requests
+  // - Guest: profile + bookings
+  const [tab, setTab] = useState("profile");
+
+  // Queries (safe: only enabled when needed)
+  const { data: ownerData, isLoading: hotelsLoading } = useOwnerHotelDataQuery(
+    {},
+    { enabled: isOwner && isOpen } // if your hook supports options
+  );
+
+  const ownerHotels = ownerData?.hotels || [];
+
+  const { data: bookingData, isLoading: bookingsLoading } = useGuestBookingQuery(
+    {},
+    { enabled: isGuest && isOpen } // if your hook supports options
+  );
+
+  const { data: OwnerBookingData, isLoading: ownerBookingsLoading } =
+    useOwnerBookingQuery({}, { enabled: isOwner && isOpen }); // if supported
+
   const handleViewAllHotels = () => {
     onClose();
     router.push("/owner-hotels");
   };
-
-  // Tab State: Owners have 3 tabs, Guests have 2
-  const [tab, setTab] = useState("profile");
 
   const initials = useMemo(() => {
     const f = user?.firstName?.[0] ?? "";
@@ -44,16 +57,36 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
 
   useEffect(() => {
     setMounted(true);
+
     if (isOpen) {
       document.body.style.overflow = "hidden";
       setTab("profile");
     }
+
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   if (!isOpen || !mounted) return null;
+
+  // ✅ Decide label under name
+  const roleLabel = isAdmin ? "Administrator" : isOwner ? "Hotel Owner" : "Guest Member";
+
+  // ✅ Which tabs to show
+  const showHotelsTab = isOwner && !isAdmin;
+  const showBookingsTab = !isAdmin; // owner requests OR guest bookings (hide for admin)
+
+  // ✅ Grid columns
+  const tabCols = isAdmin ? "grid-cols-1" : isOwner ? "grid-cols-3" : "grid-cols-2";
+
+  // ✅ Correct list depending on role/tab
+  const listItems =
+    (isOwner
+      ? OwnerBookingData?.bookings
+      : bookingData?.bookings) || [];
+
+  const listLoading = isOwner ? ownerBookingsLoading : bookingsLoading;
 
   const modalContent = (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
@@ -79,29 +112,29 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
             My Account
           </div>
 
-          {/* Dynamic Tabs based on Role */}
-          <div
-            className={`mb-5 rounded-xl bg-gray-100 p-1 grid ${
-              isOwner ? "grid-cols-3" : "grid-cols-2"
-            }`}
-          >
+          {/* ✅ Tabs */}
+          <div className={`mb-5 rounded-xl bg-gray-100 p-1 grid ${tabCols}`}>
             <TabBtn
               active={tab === "profile"}
               onClick={() => setTab("profile")}
               label="Profile"
             />
-            {isOwner && (
+
+            {showHotelsTab && (
               <TabBtn
                 active={tab === "hotels"}
                 onClick={() => setTab("hotels")}
                 label="Hotels"
               />
             )}
-            <TabBtn
-              active={tab === "bookings" || tab === "requests"}
-              onClick={() => setTab(isOwner ? "requests" : "bookings")}
-              label={isOwner ? "Requests" : "Bookings"}
-            />
+
+            {showBookingsTab && (
+              <TabBtn
+                active={tab === "bookings" || tab === "requests"}
+                onClick={() => setTab(isOwner ? "requests" : "bookings")}
+                label={isOwner ? "Requests" : "Bookings"}
+              />
+            )}
           </div>
 
           {/* --- PROFILE TAB --- */}
@@ -115,9 +148,7 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
                   <div className="font-serif font-bold text-lg text-gray-900 capitalize">
                     {user?.firstName} {user?.lastName}
                   </div>
-                  <div className="text-sm text-gray-500 italic">
-                    {isOwner ? "Hotel Owner" : "Guest Member"}
-                  </div>
+                  <div className="text-sm text-gray-500 italic">{roleLabel}</div>
                 </div>
                 <span className="rounded-full bg-[#2D5A4C]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#2D5A4C]">
                   {user?.role}
@@ -125,29 +156,15 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
               </div>
 
               <div className="space-y-3 px-2">
-                <InfoLine
-                  icon={<Mail size={16} />}
-                  label="Email"
-                  value={user?.email}
-                />
-                <InfoLine
-                  icon={<Phone size={16} />}
-                  label="Phone"
-                  value={user?.phone || "N/A"}
-                />
+                <InfoLine icon={<Mail size={16} />} label="Email" value={user?.email} />
+                <InfoLine icon={<Phone size={16} />} label="Phone" value={user?.phone || "N/A"} />
               </div>
 
               <div className="mt-8 space-y-3">
-                <Link
-                  href="/profile"
-                  onClick={onClose}
-                  className="block w-full"
-                >
+                <Link href="/profile" onClick={onClose} className="block w-full">
                   <Button
                     title="View Full Profile"
-                    bg="bg-transparent"
-                    textColor="text-gray-900"
-                    border="border border-gray-300"
+                    variant="outline"
                     className="w-full py-3"
                   />
                 </Link>
@@ -157,7 +174,6 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
                   onClick={onLogout}
                   disabled={isLoggingOut}
                   title={isLoggingOut ? "Logging out..." : "Logout"}
-                  textColor="text-white"
                   className="w-full py-3 hover:bg-red-600 shadow-lg shadow-red-100"
                   iconLeft={<LogOut size={16} />}
                 />
@@ -166,9 +182,7 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
           )}
 
           {/* --- OWNER: HOTELS TAB --- */}
-
-          {/* --- OWNER: HOTELS TAB (With Placeholder Stats) --- */}
-          {isOwner && tab === "hotels" && (
+          {isOwner && !isAdmin && tab === "hotels" && (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 animate-in fade-in duration-300">
               {hotelsLoading ? (
                 <div className="flex flex-col items-center py-10 text-gray-400">
@@ -177,113 +191,110 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
                 </div>
               ) : ownerHotels.length === 0 ? (
                 <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
-                  <HotelIcon className="mx-auto text-gray-300 mb-2" size={32} />
-                  <p className="text-sm text-gray-500">
-                    You haven't listed any hotels yet.
-                  </p>
+                  <p className="text-sm text-gray-500">You haven't listed any hotels yet.</p>
                 </div>
               ) : (
-                ownerHotels.slice(0, 3).map((hotel, index) => {
-                  // Temporary logic for dummy stats based on index to keep them consistent
-                  const dummyBookings = (index + 1) * 12 + 5;
-                  const dummyRequests = (index + 1) * 3 + 2;
+                ownerHotels.slice(0, 3).map((hotel) => (
+                  <div
+                    key={hotel._id}
+                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-[#2D5A4C]/30 transition-all bg-white shadow-sm group"
+                  >
+                    <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                      <Image
+                        src={hotel.images?.[0] || "/placeholder-hotel.jpg"}
+                        alt={hotel.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
 
-                  return (
-                    <div
-                      key={hotel._id}
-                      className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-[#2D5A4C]/30 transition-all bg-white shadow-sm group"
-                    >
-                      <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                        <Image
-                          src={hotel.images?.[0] || "/placeholder-hotel.jpg"}
-                          alt={hotel.name}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-serif font-bold text-gray-900 truncate capitalize">
-                          {hotel.name}
-                        </h4>
-                        <p className="text-xs text-gray-500 capitalize">
-                          {hotel.city + " " + hotel.country ||
-                            "Primary Location"}
-                        </p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-serif font-bold text-gray-900 truncate capitalize">
+                        {hotel.name}
+                      </h4>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {hotel.city} {hotel.country}
+                      </p>
 
-                        {/* New Stats Row */}
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <div className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] font-bold text-gray-700 uppercase">
-                              {dummyBookings} Bookings
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            <span className="text-[10px] font-bold text-gray-700 uppercase">
-                              {dummyRequests} Requests
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-bold text-gray-700 uppercase">
+                            {hotel?.totalBookingsCount ?? 0} Bookings
+                          </span>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          <span className="text-[10px] font-bold text-gray-700 uppercase">
+                            {hotel?.activeRequestsCount ?? 0} Requests
+                          </span>
+                        </div>
+                        {"totalRoomsCount" in hotel && (
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                            <span className="text-[10px] font-bold text-gray-700 uppercase">
+                              {hotel?.totalRoomsCount ?? 0} Rooms
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
 
               <div className="pt-2">
                 <Button
                   onClick={handleViewAllHotels}
                   title={
-                    ownerHotels.length > 3
-                      ? `View All ${ownerHotels.length} Properties`
+                    (ownerData?.count ?? 0) > 3
+                      ? `View All ${ownerData.count} Properties`
                       : "Manage Properties"
                   }
                   variant="primary"
-                  textColor="text-gray-700"
-                  border="border border-gray-200"
                   className="w-full py-3"
-                  disabled={ownerHotels.length <= 0}
+                  disabled={!ownerData?.count || ownerData.count <= 0}
                 />
               </div>
             </div>
           )}
 
           {/* --- OWNER: REQUESTS / GUEST: BOOKINGS --- */}
-          {(tab === "requests" || tab === "bookings") && (
+          {!isAdmin && (tab === "requests" || tab === "bookings") && (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 animate-in fade-in duration-300">
-              {/* Determine which data to use and slice to max 3 */}
-              {(
-                (isOwner
-                  ? OwnerBookingData?.bookings
-                  : bookingData?.bookings) || []
-              )
-                .slice(0, 3)
-                .map((item) => (
+              {listLoading ? (
+                <div className="flex flex-col items-center py-10 text-gray-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D5A4C] mb-2" />
+                  <p className="text-xs">Loading...</p>
+                </div>
+              ) : listItems.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-sm text-gray-400 italic">
+                    No {tab} found.
+                  </p>
+                </div>
+              ) : (
+                listItems.slice(0, 3).map((item) => (
                   <div
-                    key={item._id} // MongoDB uses _id
+                    key={item._id}
                     className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm flex items-center justify-between"
                   >
                     <div className="flex-1">
                       <h4 className="font-bold text-gray-900">
-                        {/* If Owner: Show Guest Name. If Guest: Show Hotel Name (Populated) */}
                         {isOwner
                           ? item.guestInfo?.fullName
                           : item.hotelId?.name || "Hotel"}
                       </h4>
 
                       <p className="text-xs text-gray-500">
-                        {/* If Owner: Show Hotel Name. If Guest: Show Hotel Location/Currency */}
                         {isOwner
                           ? item.hotelId?.name
                           : `${item.currency} ${item.totalAmount}`}
                       </p>
 
                       <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                        {/* Formatting the date for a cleaner look */}
                         {new Date(item.checkIn).toLocaleDateString()} •{" "}
-                        {item?.guestsAdults} guests •{" "}
-                        {item.roomsRequested} room(s)
+                        {item?.guestsAdults} guests • {item.roomsRequested} room(s)
                       </p>
                     </div>
 
@@ -291,25 +302,15 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
                       className={`px-3 py-1 rounded-lg text-[10px] font-bold border uppercase ${
                         item.status === "pending"
                           ? "bg-amber-50 text-amber-600 border-amber-100"
-                          : item.status === "approved" ||
-                            item.status === "confirmed"
+                          : item.status === "approved" || item.status === "confirmed"
                           ? "bg-[#2D5A4C]/10 text-[#2D5A4C] border-[#2D5A4C]/20"
-                          : "bg-red-50 text-red-600 border-red-100" // For cancelled/rejected
+                          : "bg-red-50 text-red-600 border-red-100"
                       }`}
                     >
                       {item.status}
                     </span>
                   </div>
-                ))}
-
-              {/* Empty State when no bookings exist */}
-              {(isOwner ? ownerData?.bookings : bookingData?.bookings)
-                ?.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-sm text-gray-400 italic">
-                    No {tab} found.
-                  </p>
-                </div>
+                ))
               )}
 
               <Link
@@ -319,8 +320,7 @@ const ProfileModal = ({ user, isOpen, onClose, onLogout, isLoggingOut }) => {
               >
                 <Button
                   title={isOwner ? "View All Requests" : "View All Bookings"}
-                  textColor="text-gray-700"
-                  border="border border-gray-200"
+                  variant="outline"
                   className="w-full py-3"
                 />
               </Link>

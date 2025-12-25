@@ -3,12 +3,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 // Standard imports for Providers
-import QueryProvider from "./providers/QueryProvider";
 import ReduxProvider from "./providers/ReduxProvider";
 import AuthBootstrap from "./providers/AuthBootstrap";
 import { Toaster } from "react-hot-toast";
 import Navbar from '@/components/Layout/Navbar';
 import Footer from '@/components/Layout/Footer';
+import QueryProvider from './providers/QueryProvider';
 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });

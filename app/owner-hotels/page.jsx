@@ -21,10 +21,13 @@ export default function OwnerHotelsPage() {
     router.push(`/edit-hotel/${id}`);
   };
 
+  const handleNavigate = () => {
+    router.push("/booking-requests");
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] py-12 px-4">
       <div className="container mx-auto max-w-6xl">
-
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
           <div>
@@ -36,7 +39,10 @@ export default function OwnerHotelsPage() {
             </p>
           </div>
 
-          <Link href={"/add-hotels"} className="flex items-center gap-2 bg-[#2D5A4C] text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-[#2D5A4C]/20 hover:bg-[#23473b] transition-all active:scale-95">
+          <Link
+            href={"/add-hotels"}
+            className="flex items-center gap-2 bg-[#2D5A4C] text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-[#2D5A4C]/20 hover:bg-[#23473b] transition-all active:scale-95"
+          >
             <Plus size={20} />
             Add New Hotel
           </Link>
@@ -50,16 +56,18 @@ export default function OwnerHotelsPage() {
               className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
             >
               {/* Image Container */}
-              <div className="relative aspect-[16/9] overflow-hidden">
+              <div className="relative aspect-[16/9] w-full overflow-hidden">
                 <img
                   src={hotel.images?.[0]}
                   alt={hotel.name}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover w-full transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg flex items-center gap-1 text-amber-500 shadow-sm">
                   <Star size={14} className="fill-current" />
-                  <span className="text-xs font-bold text-gray-900">{hotel.rating}</span>
+                  <span className="text-xs font-bold text-gray-900">
+                    {hotel.rating}
+                  </span>
                 </div>
               </div>
 
@@ -80,17 +88,25 @@ export default function OwnerHotelsPage() {
                   <div className="bg-[#F4F7F6] p-4 rounded-xl">
                     <div className="flex items-center gap-2 text-gray-500 mb-1">
                       <Users size={16} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Bookings</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">
+                        Bookings
+                      </span>
                     </div>
-                    <p className="text-2xl font-bold text-[#1A2B2B]">15{hotel.bookings}</p>
+                    <p className="text-2xl font-bold text-[#1A2B2B]">
+                      {hotel?.totalBookingsCount}
+                    </p>
                   </div>
 
                   <div className="bg-[#F4F7F6] p-4 rounded-xl">
                     <div className="flex items-center gap-2 text-gray-500 mb-1">
                       <Home size={16} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Rooms</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">
+                        Rooms
+                      </span>
                     </div>
-                    <p className="text-2xl font-bold text-[#1A2B2B]">5{hotel.rooms}</p>
+                    <p className="text-2xl font-bold text-[#1A2B2B]">
+                      {hotel?.totalRoomsCount}
+                    </p>
                   </div>
                 </div>
 
@@ -105,6 +121,7 @@ export default function OwnerHotelsPage() {
                   />
 
                   <Button
+                    onClick={handleNavigate}
                     variant="primary"
                     title="View Bookings"
                     iconLeft={<Eye size={16} />}

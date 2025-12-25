@@ -3,41 +3,67 @@
 import React, { useState } from "react";
 import { CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 import { useOwnerBookingQuery } from "@/features/booking/useBookingQuery";
-import { updateBookingStatus } from "@/features/booking/useBookingMutation"; 
+import { updateBookingStatus } from "@/features/booking/useBookingMutation";
 import { formatDateRange } from "@/lib/features";
 import Button from "@/components/ui/Button";
 import RejectModal from "@/components/Common/RejectModal";
+import Pagination from "@/components/Common/Pagination";
 
 export default function OwnerBookingsPage() {
-  const { data: OwnerBookingData, isLoading } = useOwnerBookingQuery({});
-  const { mutate: updateStatus, isPending: isUpdating } = updateBookingStatus();
-  
-  // Track which booking is being rejected for the Modal
+  // pagination
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const { data, isLoading, isFetching } = useOwnerBookingQuery({
+    page,
+    limit,
+  });
+
+  const { mutate: updateStatus, isPending: isUpdating } =
+    updateBookingStatus();
+
+  // reject modal state
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState(null);
 
-  // 1. Confirm Handler (Direct Update)
+  // per-row loading
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const bookings = data?.bookings || [];
+  const metadata = data?.metadata || data?.pagination || null;
+
   const handleConfirm = (id) => {
-    updateStatus({
-      id,
-      data: { decision: "approved" },
-    });
+    setUpdatingId(id);
+    updateStatus(
+      { id, data: { decision: "approved" } },
+      {
+        onSettled: () => setUpdatingId(null),
+      }
+    );
   };
 
-  // 2. Reject Handler (Triggered from Modal)
-  const handleRejectAction = (reason) => {
-    updateStatus({
-      id: selectedBookingId,
-      data: { 
-        decision: "rejected", 
-        reason: reason 
+  const handleRejectOpen = (id) => {
+    setSelectedBookingId(id);
+    setIsRejectModalOpen(true);
+  };
+
+  const handleRejectConfirm = (reason) => {
+    if (!selectedBookingId) return;
+
+    setUpdatingId(selectedBookingId);
+    updateStatus(
+      {
+        id: selectedBookingId,
+        data: { decision: "rejected", reason },
       },
-    }, {
-      onSuccess: () => {
-        setIsRejectModalOpen(false);
-        setSelectedBookingId(null);
+      {
+        onSuccess: () => {
+          setIsRejectModalOpen(false);
+          setSelectedBookingId(null);
+        },
+        onSettled: () => setUpdatingId(null),
       }
-    });
+    );
   };
 
   if (isLoading) {
@@ -51,6 +77,7 @@ export default function OwnerBookingsPage() {
   return (
     <div className="min-h-screen bg-[#FDFDFD] py-12 px-4">
       <div className="container mx-auto max-w-8xl">
+        {/* Header */}
         <div className="mb-10">
           <h1 className="text-4xl font-serif font-bold text-[#1A2B2B] mb-2">
             Booking Requests
@@ -60,95 +87,156 @@ export default function OwnerBookingsPage() {
           </p>
         </div>
 
+        {/* Booking List */}
         <div className="space-y-6">
-          {OwnerBookingData?.bookings.length > 0 ? (
-            OwnerBookingData.bookings.map((request) => (
-              <div
-                key={request._id}
-                className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
-              >
-                <div className="p-8 grid grid-cols-1 md:grid-cols-4 gap-8 border-b mb-4">
-                  <div>
-                    <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">Guest Name</p>
-                    <p className="font-bold text-[#1A2B2B] text-lg">{request?.guestInfo?.fullName}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">Hotel</p>
-                    <p className="font-bold text-[#1A2B2B] text-lg">{request?.hotelId?.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">Dates</p>
-                    <p className="font-bold text-[#1A2B2B] text-lg">{formatDateRange(request.checkIn, request.checkOut)}</p>
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">Status</p>
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase flex items-center gap-2 border w-fit ${
-                      request.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-100" :
-                      request.status === "approved" || request.status === "confirmed" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                      "bg-red-50 text-red-600 border-red-100"
-                    }`}>
-                      {request.status === "pending" && <Clock size={14} />}
-                      {request.status}
-                    </span>
-                  </div>
-                </div>
+          {bookings.length > 0 ? (
+            bookings.map((request) => {
+              const rowBusy = isUpdating && updatingId === request._id;
 
-                <div className="px-8 pb-8 flex flex-col md:flex-row items-center gap-4">
-                  {request.status === "pending" ? (
-                    <>
-                      <Button
-                        title={isUpdating && selectedBookingId === null ? "Confirming..." : "Confirm"}
-                        iconLeft={!isUpdating && <CheckCircle2 size={16} />}
-                        variant="primary"
-                        size="lg"
-                        className="flex-1 md:flex-[0.2] text-xs font-bold uppercase"
-                        onClick={() => handleConfirm(request._id)}
-                        disabled={isUpdating}
-                      />
-
-                      <Button
-                        title="Reject"
-                        iconLeft={<XCircle size={16} />}
-                        variant="outline"
-                        size="lg"
-                        className="flex-1 md:flex-[0.2] text-xs font-bold uppercase border-red-200 text-red-600 hover:bg-red-50"
-                        onClick={() => {
-                          setSelectedBookingId(request._id);
-                          setIsRejectModalOpen(true);
-                        }}
-                        disabled={isUpdating}
-                      />
-                    </>
-                  ) : (
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium flex items-center gap-2 ${request.status === 'approved' ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {request.status === "approved" ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                        Decision: {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+              return (
+                <div
+                  key={request._id}
+                  className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
+                >
+                  {/* Top Info */}
+                  <div className="p-8 grid grid-cols-1 md:grid-cols-4 gap-8 border-b">
+                    <div>
+                      <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">
+                        Guest Name
+                      </p>
+                      <p className="font-bold text-[#1A2B2B] text-lg">
+                        {request?.guestInfo?.fullName || "—"}
                       </p>
                     </div>
-                  )}
-                  <button className="ml-auto text-xs font-bold text-gray-400 hover:text-gray-600 uppercase tracking-widest">
-                    View Details
-                  </button>
+
+                    <div>
+                      <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">
+                        Hotel
+                      </p>
+                      <p className="font-bold text-[#1A2B2B] text-lg">
+                        {request?.hotelId?.name || "—"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">
+                        Dates
+                      </p>
+                      <p className="font-bold text-[#1A2B2B] text-lg">
+                        {formatDateRange(
+                          request.checkIn,
+                          request.checkOut
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-bold text-[#8BA19B] uppercase tracking-widest mb-1">
+                        Status
+                      </p>
+                      <span
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase flex items-center gap-2 border w-fit ${
+                          request.status === "pending"
+                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                            : request.status === "approved" ||
+                              request.status === "confirmed"
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : "bg-red-50 text-red-600 border-red-100"
+                        }`}
+                      >
+                        {request.status === "pending" && (
+                          <Clock size={14} />
+                        )}
+                        {request.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="px-8 py-6 flex flex-col md:flex-row items-center gap-4">
+                    {request.status === "pending" ? (
+                      <>
+                        <Button
+                          title={rowBusy ? "Confirming..." : "Confirm"}
+                          iconLeft={
+                            !rowBusy && <CheckCircle2 size={16} />
+                          }
+                          variant="primary"
+                          size="lg"
+                          className="flex-1 md:flex-[0.25] text-xs font-bold uppercase"
+                          onClick={() =>
+                            handleConfirm(request._id)
+                          }
+                          disabled={rowBusy}
+                        />
+
+                        <Button
+                          title="Reject"
+                          iconLeft={<XCircle size={16} />}
+                          variant="dangerOutline"
+                          size="lg"
+                          className="flex-1 md:flex-[0.25] text-xs font-bold uppercase"
+                          onClick={() =>
+                            handleRejectOpen(request._id)
+                          }
+                          disabled={rowBusy}
+                        />
+                      </>
+                    ) : (
+                      <div className="flex-1">
+                        <p
+                          className={`text-sm font-medium flex items-center gap-2 ${
+                            request.status === "approved"
+                              ? "text-emerald-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {request.status === "approved" ? (
+                            <CheckCircle2 size={16} />
+                          ) : (
+                            <XCircle size={16} />
+                          )}
+                          Decision:{" "}
+                          {request.status.charAt(0).toUpperCase() +
+                            request.status.slice(1)}
+                        </p>
+                      </div>
+                    )}
+
+                    <button className="ml-auto text-xs font-bold text-gray-400 hover:text-gray-600 uppercase tracking-widest">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-              <p className="text-gray-400">No booking requests found.</p>
+              <p className="text-gray-400">
+                No booking requests found.
+              </p>
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {metadata && (
+          <Pagination
+            metadata={metadata}
+            onPageChange={(newPage) => setPage(newPage)}
+          />
+        )}
       </div>
 
+      {/* Reject Modal */}
       <RejectModal
         isOpen={isRejectModalOpen}
-        isPending={isUpdating}
+        isPending={isUpdating && updatingId === selectedBookingId}
         onClose={() => {
           setIsRejectModalOpen(false);
           setSelectedBookingId(null);
         }}
-        onConfirm={handleRejectAction}
+        onConfirm={handleRejectConfirm}
       />
     </div>
   );
