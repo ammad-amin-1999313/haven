@@ -1,13 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Star, MapPin, Calendar, User, Check, X, Phone, Mail, Clock } from "lucide-react";
+import {
+  Star,
+  MapPin,
+  Calendar,
+  User,
+  Check,
+  X,
+  Phone,
+  Mail,
+  Clock,
+} from "lucide-react";
 import { useSingleHotelQuery } from "@/features/hotel/useHotelsQuery";
 import HavenLoader from "./HavenLoader";
 import HotelGallery from "./Common/HotelGallery";
 import toast from "react-hot-toast";
 import ConformModal from "./Common/ConformModal";
 import PendingModal from "./Common/PendingModal";
+import { useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
+import { useCreateBookingMutation } from "@/features/booking/useBookingMutation";
 
 // Layout Component
 function Layout({ children }) {
@@ -15,7 +28,9 @@ function Layout({ children }) {
     <div className="min-h-screen">
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="container mx-auto">
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Luxury Hotels</h1>
+          <h1 className="text-2xl font-serif font-bold text-gray-900">
+            Luxury Hotels
+          </h1>
         </div>
       </nav>
       <main>{children}</main>
@@ -40,7 +55,13 @@ function Badge({ children, variant = "default", className = "" }) {
 }
 
 // Button Component
-function Button({ children, variant = "default", className = "", onClick, ...props }) {
+function Button({
+  children,
+  variant = "default",
+  className = "",
+  onClick,
+  ...props
+}) {
   const variants = {
     default: "bg-green-700 text-white hover:bg-green-800",
     outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
@@ -67,8 +88,18 @@ function CalendarPicker({ selected, onSelect, className = "" }) {
   const firstDayOfMonth = new Date(displayYear, displayMonth, 1).getDay();
 
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
   const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -98,20 +129,29 @@ function CalendarPicker({ selected, onSelect, className = "" }) {
   return (
     <div className={`p-3 bg-white ${className}`}>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded">
+        <button
+          onClick={handlePrevMonth}
+          className="p-1 hover:bg-gray-100 rounded"
+        >
           ←
         </button>
         <div className="font-semibold text-sm">
           {months[displayMonth]} {displayYear}
         </div>
-        <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded">
+        <button
+          onClick={handleNextMonth}
+          className="p-1 hover:bg-gray-100 rounded"
+        >
           →
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-2">
         {days.map((day) => (
-          <div key={day} className="text-center text-xs font-medium text-gray-500 p-2">
+          <div
+            key={day}
+            className="text-center text-xs font-medium text-gray-500 p-2"
+          >
             {day}
           </div>
         ))}
@@ -133,8 +173,9 @@ function CalendarPicker({ selected, onSelect, className = "" }) {
             <button
               key={day}
               onClick={() => handleDateClick(day)}
-              className={`p-2 text-sm rounded-md hover:bg-gray-100 ${isSelected ? "bg-green-700 text-white hover:bg-green-800" : ""
-                }`}
+              className={`p-2 text-sm rounded-md hover:bg-gray-100 ${
+                isSelected ? "bg-green-700 text-white hover:bg-green-800" : ""
+              }`}
             >
               {day}
             </button>
@@ -147,7 +188,11 @@ function CalendarPicker({ selected, onSelect, className = "" }) {
 
 // Helpers
 const formatDate = (date) =>
-  date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
 const nightsBetween = (start, end) => {
   const s = new Date(start);
@@ -174,7 +219,11 @@ async function submitBookingRequest(payload) {
 
 export default function HotelDetails({ hotelId }) {
   const { data, isLoading, isError } = useSingleHotelQuery(hotelId);
-
+  const user = useSelector((state) => state.user?.user); // adjust if your slice is different
+  const role = user?.role; // "guest" | "owner"
+  
+  const { mutateAsync: createBookingRequest, isPending } =
+    useCreateBookingMutation();
   // Dates
   const [checkIn, setCheckIn] = useState(new Date());
   const [checkOut, setCheckOut] = useState(() => {
@@ -202,8 +251,8 @@ export default function HotelDetails({ hotelId }) {
     arrivalTime: "",
     notes: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+  console.log(guestInfo);
+  
   // Data
   const hotelDoc = data?.hotel || null;
   const roomTypes = data?.roomTypes || [];
@@ -267,7 +316,9 @@ export default function HotelDetails({ hotelId }) {
     });
   }, [minRoomsNeeded, maxRoomsPossible]);
 
-  const pricePerNight = Number(selectedRoomType?.pricePerNight ?? hotelDoc?.startingPricePerNight ?? 0);
+  const pricePerNight = Number(
+    selectedRoomType?.pricePerNight ?? hotelDoc?.startingPricePerNight ?? 0
+  );
   const total = pricePerNight * (nights || 1) * (Number(roomsRequested) || 1);
 
   const validateBookingUI = () => {
@@ -289,7 +340,9 @@ export default function HotelDetails({ hotelId }) {
       return false;
     }
     if (roomsRequested < minRoomsNeeded) {
-      toast.error(`You need at least ${minRoomsNeeded} room(s) for ${adults} adults.`);
+      toast.error(
+        `You need at least ${minRoomsNeeded} room(s) for ${adults} adults.`
+      );
       return false;
     }
     if (roomsRequested > maxRoomsPossible) {
@@ -327,6 +380,17 @@ export default function HotelDetails({ hotelId }) {
   };
 
   const handleConfirmBooking = async () => {
+    if (role && role !== "guest") {
+      toast.error("Only guests can book rooms. Please login as a guest.");
+      setShowConfirmModal(false); // optional: close modal
+      return;
+    }
+    // If user is not logged in OR role missing, treat as not allowed (optional)
+    if (!role) {
+      toast.error("Please login as a guest to book a room.");
+      setShowConfirmModal(false); // optional
+      return;
+    }
     if (!validateGuestInfo()) return;
 
     const payload = {
@@ -352,16 +416,14 @@ export default function HotelDetails({ hotelId }) {
     };
 
     try {
-      setIsSubmitting(true);
-      await submitBookingRequest(payload);
-
+      await createBookingRequest(payload);
       setShowConfirmModal(false);
       setShowPendingModal(true);
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to submit booking request.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      toast.error(
+        e?.response?.data?.message || "Failed to submit booking request."
+      );
+    } 
   };
 
   // Safe early returns AFTER hooks
@@ -371,7 +433,9 @@ export default function HotelDetails({ hotelId }) {
     return (
       <div className="text-center py-20">
         <h2 className="text-2xl font-bold">Hotel not found</h2>
-        <p className="text-gray-500">The property you are looking for does not exist.</p>
+        <p className="text-gray-500">
+          The property you are looking for does not exist.
+        </p>
       </div>
     );
   }
@@ -386,7 +450,7 @@ export default function HotelDetails({ hotelId }) {
           open={showConfirmModal}
           onClose={() => setShowConfirmModal(false)}
           onConfirm={handleConfirmBooking}
-          isSubmitting={isSubmitting}
+          isSubmitting={isPending}
           hotelName={hotelDoc.name}
           checkInLabel={formatDate(checkIn)}
           checkOutLabel={formatDate(checkOut)}
@@ -398,6 +462,7 @@ export default function HotelDetails({ hotelId }) {
           total={total}
           guestInfo={guestInfo}
           setGuestInfo={setGuestInfo}
+          user={user}
         />
       )}
 
@@ -424,7 +489,7 @@ export default function HotelDetails({ hotelId }) {
                   variant="outline"
                   className="border-green-200 text-green-700 px-3 py-1 text-sm font-medium capitalize"
                 >
-                  {(hotelDoc.amenities?.[0] || "Luxury")} Hotel
+                  {hotelDoc.amenities?.[0] || "Luxury"} Hotel
                 </Badge>
                 <div className="flex items-center text-amber-500 font-bold">
                   <Star className="h-5 w-5 fill-current mr-1" />
@@ -450,7 +515,10 @@ export default function HotelDetails({ hotelId }) {
               <h3 className="font-serif font-bold text-xl mb-4">Amenities</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {hotelDoc.amenities?.map((amenity) => (
-                  <div key={amenity} className="flex items-center text-sm text-gray-600 capitalize">
+                  <div
+                    key={amenity}
+                    className="flex items-center text-sm text-gray-600 capitalize"
+                  >
                     <Check className="h-4 w-4 mr-2 text-green-600" />
                     {amenity}
                   </div>
@@ -462,17 +530,25 @@ export default function HotelDetails({ hotelId }) {
             <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b pb-4">
                 <div>
-                  <span className="text-3xl font-bold font-serif">${pricePerNight}</span>
+                  <span className="text-3xl font-bold font-serif">
+                    ${pricePerNight}
+                  </span>
                   <span className="text-gray-600"> / night</span>
                   {selectedRoomType?.title ? (
                     <div className="text-xs text-gray-500 mt-1">
-                      Selected: <span className="font-semibold">{selectedRoomType.title}</span>
+                      Selected:{" "}
+                      <span className="font-semibold">
+                        {selectedRoomType.title}
+                      </span>
                     </div>
                   ) : null}
                   {roomsRequested > 1 ? (
                     <div className="text-[11px] mt-1 text-gray-500">
-                      You are booking <span className="font-semibold">{roomsRequested}</span> rooms to fit{" "}
-                      <span className="font-semibold">{guestsAdults}</span> adults.
+                      You are booking{" "}
+                      <span className="font-semibold">{roomsRequested}</span>{" "}
+                      rooms to fit{" "}
+                      <span className="font-semibold">{guestsAdults}</span>{" "}
+                      adults.
                     </div>
                   ) : null}
                 </div>
@@ -506,7 +582,8 @@ export default function HotelDetails({ hotelId }) {
                             setCheckIn(newDate);
                             const nextOut = new Date(newDate);
                             nextOut.setDate(nextOut.getDate() + 1);
-                            if (nightsBetween(newDate, checkOut) <= 0) setCheckOut(nextOut);
+                            if (nightsBetween(newDate, checkOut) <= 0)
+                              setCheckOut(nextOut);
                             setShowCheckInCal(false);
                           }}
                           className="border rounded-md shadow-lg"
@@ -530,7 +607,11 @@ export default function HotelDetails({ hotelId }) {
                       type="button"
                     >
                       <Calendar className="mr-2 h-4 w-4" />
-                      {checkOut ? formatDate(checkOut) : <span>Pick a date</span>}
+                      {checkOut ? (
+                        formatDate(checkOut)
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
                     </Button>
                     {showCheckOutCal && (
                       <div className="absolute z-50 mt-2 left-0 right-0">
@@ -556,7 +637,9 @@ export default function HotelDetails({ hotelId }) {
                       type="number"
                       min={1}
                       value={guestsAdults}
-                      onChange={(e) => setGuestsAdults(Number(e.target.value || 1))}
+                      onChange={(e) =>
+                        setGuestsAdults(Number(e.target.value || 1))
+                      }
                       className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-300 bg-white"
                     />
                   </div>
@@ -570,7 +653,9 @@ export default function HotelDetails({ hotelId }) {
                   <label className="text-sm font-medium">Room Type</label>
 
                   {roomTypes.length === 0 ? (
-                    <div className="text-sm text-red-500">No room types found for this hotel.</div>
+                    <div className="text-sm text-red-500">
+                      No room types found for this hotel.
+                    </div>
                   ) : (
                     <select
                       value={selectedRoomTypeId}
@@ -583,7 +668,8 @@ export default function HotelDetails({ hotelId }) {
                         const label = `${rt.title} — up to ${cap} adults — $${rt.pricePerNight}/night`;
                         return (
                           <option key={rt._id} value={rt._id}>
-                            {label} {minRooms > 1 ? `(needs ${minRooms} rooms)` : ""}
+                            {label}{" "}
+                            {minRooms > 1 ? `(needs ${minRooms} rooms)` : ""}
                           </option>
                         );
                       })}
@@ -603,7 +689,11 @@ export default function HotelDetails({ hotelId }) {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setRoomsRequested((p) => Math.max(minRoomsNeeded, (Number(p) || 1) - 1))}
+                      onClick={() =>
+                        setRoomsRequested((p) =>
+                          Math.max(minRoomsNeeded, (Number(p) || 1) - 1)
+                        )
+                      }
                       className="h-10 w-10 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
                       disabled={roomsRequested <= minRoomsNeeded}
                     >
@@ -617,14 +707,23 @@ export default function HotelDetails({ hotelId }) {
                       value={roomsRequested}
                       onChange={(e) => {
                         const v = Number(e.target.value || minRoomsNeeded);
-                        setRoomsRequested(Math.min(Math.max(v, minRoomsNeeded), maxRoomsPossible));
+                        setRoomsRequested(
+                          Math.min(
+                            Math.max(v, minRoomsNeeded),
+                            maxRoomsPossible
+                          )
+                        );
                       }}
                       className="w-full px-3 py-2 rounded-md border border-gray-300 bg-white text-center"
                     />
 
                     <button
                       type="button"
-                      onClick={() => setRoomsRequested((p) => Math.min(maxRoomsPossible, (Number(p) || 1) + 1))}
+                      onClick={() =>
+                        setRoomsRequested((p) =>
+                          Math.min(maxRoomsPossible, (Number(p) || 1) + 1)
+                        )
+                      }
                       className="h-10 w-10 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
                       disabled={roomsRequested >= maxRoomsPossible}
                     >
@@ -634,7 +733,8 @@ export default function HotelDetails({ hotelId }) {
 
                   {roomsRequested < minRoomsNeeded ? (
                     <p className="text-xs text-red-500">
-                      You need at least {minRoomsNeeded} rooms for {guestsAdults} adults.
+                      You need at least {minRoomsNeeded} rooms for{" "}
+                      {guestsAdults} adults.
                     </p>
                   ) : null}
                 </div>
@@ -664,7 +764,11 @@ export default function HotelDetails({ hotelId }) {
                 <Button
                   className="w-full text-lg h-12"
                   onClick={openConfirmModal}
-                  disabled={roomTypes.length === 0 || nights <= 0 || roomsRequested < minRoomsNeeded}
+                  disabled={
+                    roomTypes.length === 0 ||
+                    nights <= 0 ||
+                    roomsRequested < minRoomsNeeded
+                  }
                   type="button"
                 >
                   Continue to Confirm

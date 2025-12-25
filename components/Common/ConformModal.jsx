@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { X, Check, User, Phone, Mail, Clock } from "lucide-react";
 
 // ✅ Reusable Confirm Modal (separate component)
@@ -10,7 +10,7 @@ export default function ConformModal({
   onClose,
   onConfirm,
   isSubmitting = false,
-
+  user,
   // summary
   hotelName = "",
   checkInLabel = "",
@@ -27,6 +27,19 @@ export default function ConformModal({
   setGuestInfo,
 }) {
   if (!open) return null;
+  useEffect(() => {
+    if (open) {
+      setGuestInfo((prev) => ({
+        ...prev,
+        // Only auto-fill if the fields are currently empty
+        fullName:
+          prev.fullName ||
+          `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
+        phone: prev.phone || user?.phone || "",
+        email: prev.email || user?.email || "",
+      }));
+    }
+  }, [open, user, setGuestInfo]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -57,7 +70,8 @@ export default function ConformModal({
           <div className="flex justify-between">
             <span className="text-gray-600">Dates</span>
             <span className="font-semibold">
-              {checkInLabel} → {checkOutLabel} ({nights} night{nights === 1 ? "" : "s"})
+              {checkInLabel} → {checkOutLabel} ({nights} night
+              {nights === 1 ? "" : "s"})
             </span>
           </div>
 
@@ -178,8 +192,8 @@ export default function ConformModal({
         </div>
 
         <p className="text-xs text-gray-500 mt-3 text-center">
-          Your request will be marked as <span className="font-semibold">Pending</span>{" "}
-          until owner approval.
+          Your request will be marked as{" "}
+          <span className="font-semibold">Pending</span> until owner approval.
         </p>
       </div>
     </div>
