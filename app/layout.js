@@ -1,4 +1,4 @@
-import dynamic from 'next/dynamic'; // Ensure this is present
+import dynamic from "next/dynamic"; // Ensure this is present
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -6,18 +6,21 @@ import "./globals.css";
 import ReduxProvider from "./providers/ReduxProvider";
 import AuthBootstrap from "./providers/AuthBootstrap";
 import { Toaster } from "react-hot-toast";
-import Navbar from '@/components/Layout/Navbar';
-import Footer from '@/components/Layout/Footer';
-import QueryProvider from './providers/QueryProvider';
-
+import Navbar from "@/components/Layout/Navbar";
+import Footer from "@/components/Layout/Footer";
+import QueryProvider from "./providers/QueryProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <QueryProvider>

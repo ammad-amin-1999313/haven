@@ -1,7 +1,8 @@
 import { api, authSession, tokenStore } from "@/lib/apiClient";
+import { bffApi } from "@/lib/apiClient.bff";
 
 export async function signup(payload) {
-  const res = await api.post("/auth/sign-up", payload)
+  const res = await bffApi.post("/api/auth/sign-up", payload)
   tokenStore.set(res.data.accessToken)
   return res.data
 }
